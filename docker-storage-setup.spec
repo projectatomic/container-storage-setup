@@ -27,6 +27,15 @@ install -p -m 644 %{SOURCE1} %{buildroot}%{_unitdir}
 # install -d %{buildroot}%{_sysconfdir}/sysconfig/
 # install -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage-setup
 
+%post
+%systemd_post %{SOURCE1}
+
+%preun
+%systemd_preun %{SOURCE1}
+
+%postun
+%systemd_postun %{SOURCE1}
+
 %files
 %{_unitdir}/docker-storage-setup.service
 %{_bindir}/docker-storage-setup
