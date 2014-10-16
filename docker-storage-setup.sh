@@ -143,7 +143,7 @@ fi
 # Calculating the based on actual data size might be better, but is
 # more difficult do to the range of possible inputs.
 VG_SIZE=$( vgs --noheadings --nosuffix --units s -o vg_size $VG )
-LV_DATA=$( lvs --noheadings -o lv_name,lv_size --units s --nosuffix --separator , | sed -e 's/^ *//')
+LV_DATA=$( lvs --noheadings -o lv_name,lv_size --units s --nosuffix --separator , $VG | sed -e 's/^ *//')
 for LV in $LV_DATA; do
   IFS=,
   read LVNAME LVSIZE <<< "$LV"
