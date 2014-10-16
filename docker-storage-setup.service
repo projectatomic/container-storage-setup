@@ -1,0 +1,9 @@
+[Unit]
+Description=Docker Storage Setup
+After=cloud-final.service
+Before=docker.socket
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker-storage-setup
+EnvironmentFile=-/etc/sysconfig/docker-storage-setup
