@@ -7,3 +7,6 @@ Before=docker.socket
 Type=oneshot
 ExecStart=/usr/bin/docker-storage-setup
 EnvironmentFile=-/etc/sysconfig/docker-storage-setup
+
+[Install]
+WantedBy=multi-user.target
