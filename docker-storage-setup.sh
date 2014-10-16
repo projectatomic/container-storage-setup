@@ -45,11 +45,13 @@ set -e
 # * Support lvm raid setups for docker data?  This would not be very difficult
 # if given multiple PVs and another variable; options could be just a simple
 # "mirror" or "stripe", or something more detailed.
-source /etc/sysconfig/docker-storage-setup
+if [ -e /etc/sysconfig/docker-storage-setup ]; then
+  source /etc/sysconfig/docker-storage-setup
+fi
 
 # Read mounts
 ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
-ROOT_VG=$( lvs --noheadings -o vg_name $ROOT_DEV )
+ROOT_VG=$( lvs --noheadings -o vg_name $ROOT_DEV | sed -e 's/^ *//' )
 ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$ROOT_VG\$/ { print \$1 }" )
 
 VG_EXISTS=
@@ -78,6 +80,9 @@ if [ -n "$DEVS" ] ; then
     if expr match $dev ".*[0-9]"; then
       echo "Partition specification unsupported at this time." >&2
       exit 1
+    fi
+    if [[ $dev != /dev/* ]]; then
+      dev=/dev/$dev
     fi
     # Use a single partition of a whole device
     # TODO:
@@ -120,8 +125,8 @@ fi
 if [ -n "$GROWPART" ]; then
   for pv in $ROOT_PVS; do
     # Split device & partition.  Ick.
-    echo growpart $( echo $pv | sed -r 's/([^0-9]*)([0-9]+)/\1 \2/' )
-    echo pvresize $pv
+    growpart $( echo $pv | sed -r 's/([^0-9]*)([0-9]+)/\1 \2/' ) || true
+    pvresize $pv
   done
 fi
 
@@ -137,12 +142,56 @@ fi
 # Reserve 0.1% of the free space in the VG for docker metadata.
 # Calculating the based on actual data size might be better, but is
 # more difficult do to the range of possible inputs.
-VG_FREE_EXTS=$( vgs --noheadings --nosuffix --units s -o vg_free $VG )
-META_SIZE=$(( $VG_FREE_EXTS / 1000 + 1 ))
-lvcreate -L ${META_SIZE}S -n docker-meta $VG
-if [ -n "$DATA_SIZE" ]; then
+VG_SIZE=$( vgs --noheadings --nosuffix --units s -o vg_size $VG )
+LV_DATA=$( lvs --noheadings -o lv_name,lv_size --units s --nosuffix --separator , | sed -e 's/^ *//')
+for LV in $LV_DATA; do
+  IFS=,
+  read LVNAME LVSIZE <<< "$LV"
+  if [ "$LVNAME" == "docker-meta" ]; then
+    META_LV_SIZE=$LVSIZE
+  elif [ "$LVNAME" == "docker-data" ]; then
+    DATA_LV_SIZE=$LVSIZE
+  fi
+done
+IFS=
+
+# NB:  The code below all becomes very strange when you consider
+# the case of a reboot.  If the config file is using "%FREE" specifications,
+# it will grow on each reboot until the VG is full.
+
+META_SIZE=$(( $VG_SIZE / 1000 + 1 ))
+if [ -n "$META_LV_SIZE" ]; then
+  if [ "$META_LV_SIZE" -lt "$META_SIZE" ]; then
+    # Keep this nonfatal, since we already have a metadata LV
+    # of _some_ size
+    lvextend -L ${META_SIZE}s /dev/$VG/docker-meta || true
+  fi
+else
+  lvcreate -L ${META_SIZE}s -n docker-meta $VG
+fi
+
+# FIXME: The code below all becomes very strange when you consider
+# the case of a reboot.  If the config file is using "+N%FREE" specifications,
+# it will grow on each reboot until the VG is practically full.
+
+if [ -n "$DATA_LV_SIZE" ]; then
+  # TODO: Figure out failure cases other than when the requested 
+  # size is larger than the current size.  For now, we just let
+  # lvextend fail.
+  if [ -n "$DATA_SIZE" ]; then
+    if [[ $DATA_SIZE == *%* ]]; then
+      lvextend -l $DATA_SIZE /dev/$VG/docker-data || true
+    else
+      lvextend -L $DATA_SIZE /dev/$VG/docker-data || true
+    fi
+  fi
+elif [ -n "$DATA_SIZE" ]; then
   # TODO: Error handling when DATA_SIZE > available space.
-  lvcreate -L $DATA_SIZE -n docker-data $VG
+  if [[ $DATA_SIZE == *%* ]]; then
+    lvcreate -l $DATA_SIZE -n docker-data $VG
+  else
+    lvcreate -L $DATA_SIZE -n docker-data $VG
+  fi
 else
   lvcreate -l "100%FREE" -n docker-data $VG
 fi
