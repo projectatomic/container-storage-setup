@@ -184,6 +184,8 @@ if [ -n "$DATA_LV_SIZE" ]; then
     else
       lvextend -L $DATA_SIZE /dev/$VG/docker-data || true
     fi
+  else
+    lvextend -l "+100%FREE" /dev/$VG/docker-data || true
   fi
 elif [ -n "$DATA_SIZE" ]; then
   # TODO: Error handling when DATA_SIZE > available space.
