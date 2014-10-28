@@ -199,6 +199,21 @@ else
 fi
 
 # Write config for docker unit
+DATA_LV_PATH=/dev/$VG/docker-data
+META_LV_PATH=/dev/$VG/docker-meta
+
+# Handle the unlikely case where /dev/$VG/docker-{data,meta} do not exist
+if [ ! -e /dev/$VG/docker-data ] || [ ! -e /dev/$VG/docker-meta ]; then
+  eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
+    eval $line
+    if [ "$LVM2_LV_NAME" = "docker-data" ]; then
+      echo DATA_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
+    elif [ "$LVM2_LV_NAME" = "docker-meta" ]; then
+      echo META_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
+    fi
+  done )
+fi
+
 cat <<EOF >/etc/sysconfig/docker-storage
-DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=/dev/mapper/$VG-docker--data --storage-opt dm.metadatadev=/dev/mapper/$VG-docker--meta
+DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV_PATH --storage-opt dm.metadatadev=$META_LV_PATH
 EOF
