@@ -1,0 +1,54 @@
+.TH "DOCKER-STORAGE-SETUP" "1" "NOVEMBER 2014" "Helper Script for Docker Storage Setup" ""
+.SH NAME
+.PP
+docker\-storage\-setup - Grows the root filesystem and sets up LVM volumes for docker 
+metadata and data.
+.SH SYNOPSIS
+.PP
+\f[B]docker-storage-setup\f[] 
+.SH OPTIONS
+.PP
+None. 
+.SH EXAMPLES
+Run \f[B]docker-storage-setup\f[] after setting up your configuration in 
+/etc/sysconfig/docker-storage-setup. 
+
+\f[B]Supported options for the configuration file\f[]:
+
+DEVS: A quoted, space-separated list of devices to be used.  This currently
+      expects the devices to be unpartitioned drives.  If "VG" is not
+      specified, then use of the root disk's extra space is implied.
+
+VG:   The volume group to use for docker storage.  Defaults to the volume
+      group where the root filesystem resides.  If VG is specified and the
+      volume group does not exist, it will be created (which requires that
+      "DEVS" be nonempty, since we don't currently support putting a second
+      partition on the root disk).
+
+The options below should be specified as values acceptable to 'lvextend -L':
+
+ROOT_SIZE: The size to which the root filesystem should be grown.
+
+DATA_SIZE: The desired size for the docker data LV.  Defaults to using all
+           free space in the VG after the root LV and docker metadata LV
+           have been allocated/grown.
+
+
+\f[B]Sample\f[]
+
+A simple, sample /etc/sysconfig/docker-storage-setup: 
+
+DEVS=/dev/vdb
+
+DATA_SIZE=8GB
+
+.fi 
+
+.SH HISTORY 
+
+.PP 
+November 2014, originally compiled by Joe Brockmeier <jzb@redhat.com> 
+based on comments in Andy Grimm's <agrimm@redhat.com> script.
+.SH AUTHORS
+Joe Brockmeier
+Andy Grimm
