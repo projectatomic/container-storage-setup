@@ -22,7 +22,8 @@
 
 set -e
 
-# Read the config.  Currently supported options:
+# This section reads the config file (/etc/sysconfig/docker-storage-setup. 
+# Currently supported options:
 # DEVS: A quoted, space-separated list of devices to be used.  This currently
 #       expects the devices to be unpartitioned drives.  If "VG" is not
 #       specified, then use of the root disk's extra space is implied.
