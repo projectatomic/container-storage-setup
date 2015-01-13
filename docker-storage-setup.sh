@@ -181,6 +181,7 @@ fi
 # more difficult do to the range of possible inputs.
 VG_SIZE=$( vgs --noheadings --nosuffix --units s -o vg_size $VG )
 LV_DATA=$( lvs --noheadings -o lv_name,lv_size --units s --nosuffix --separator , $VG | sed -e 's/^ *//')
+SAVEDIFS=$IFS
 for LV in $LV_DATA; do
   IFS=,
   read LVNAME LVSIZE <<< "$LV"
@@ -190,7 +191,7 @@ for LV in $LV_DATA; do
     DATA_LV_SIZE=$LVSIZE
   fi
 done
-IFS=
+IFS=$SAVEDIFS
 
 # NB:  The code below all becomes very strange when you consider
 # the case of a reboot.  If the config file is using "%FREE" specifications,
