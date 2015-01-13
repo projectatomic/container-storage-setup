@@ -49,6 +49,7 @@ set -e
 
 DATA_LV_NAME="docker-data"
 META_LV_NAME="docker-meta"
+POOL_LV_NAME="docker-pool"
 
 # LVM thin pool expect some space free in volume group so that it can manage
 # internal spare logical volume used for thin meta data repair. Currently
@@ -57,8 +58,15 @@ META_LV_NAME="docker-meta"
 DEFAULT_DATA_SIZE_PERCENT="98"
 
 write_storage_config_file () {
+  local storage_options
+
+  if is_lvm_pool_mode;then
+    storage_options="DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH"
+  else
+    storage_options="DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV_PATH --storage-opt dm.metadatadev=$META_LV_PATH"
+  fi
 cat <<EOF >/etc/sysconfig/docker-storage
-DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV_PATH --storage-opt dm.metadatadev=$META_LV_PATH
+$storage_options
 EOF
 }
 
@@ -81,9 +89,72 @@ setup_lvm_data_meta_mode () {
   fi
 }
 
+create_lvm_thin_pool () {
+  lvconvert -y --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
+  if [ $? -ne 0 ];then
+    echo "Converting $VG/docker-data and $VG/docker-meta to LVM thin pool failed. Exiting."
+    exit 1
+  fi
+}
+
+setup_lvm_thin_pool () {
+  if ! lvm_pool_exists; then
+    create_lvm_thin_pool
+  fi
+
+  # docker expects device mapper device and not lvm device. Do the conversion.
+  eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
+    eval $line
+    if [ "$LVM2_LV_NAME" = "$DATA_LV_NAME" ]; then
+      echo POOL_DEVICE_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
+    fi
+    done )
+}
+
+# Should return true either if SETUP_LVM_THIN_POOL=yes in config file.
+is_lvm_pool_mode () {
+  if [ "$SETUP_LVM_THIN_POOL" == "yes" ];then
+    return 0
+  fi
+
+  return 1
+}
+
+lvm_pool_exists() {
+  local lv_data
+  local lvname
+
+  lv_data=$( lvs --noheadings -o lv_name $VG | sed -e 's/^ *//')
+  for lvname in $lv_data; do
+    if [ "$lvname" == "$POOL_LV_NAME" ]; then
+	    return 0
+    fi
+  done
+
+  return 1
+}
+
 
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
+fi
+
+# In lvm thin pool mode, effectively data LV is named as pool LV. lvconvert
+# takes the data lv name and uses it as pool lv name. And later even to
+# resize the data lv, one has to use pool lv name.
+#
+# Note: lvm2 version should be same or higher than lvm2-2.02.112 for lvm
+# thin pool functionality to work properly.
+if is_lvm_pool_mode; then
+  DATA_LV_NAME=$POOL_LV_NAME
+
+  # If pool exits that means meta lv also exists. LVM tools rename meta
+  # lv with suffix _tmeta. Reflect that here.
+  if lvm_pool_exists; then
+	META_LV_NAME=${POOL_LV_NAME}_tmeta
+  else
+	META_LV_NAME=${POOL_LV_NAME}meta
+  fi
 fi
 
 # Read mounts
@@ -180,12 +251,14 @@ fi
 # Calculating the based on actual data size might be better, but is
 # more difficult do to the range of possible inputs.
 VG_SIZE=$( vgs --noheadings --nosuffix --units s -o vg_size $VG )
-LV_DATA=$( lvs --noheadings -o lv_name,lv_size --units s --nosuffix --separator , $VG | sed -e 's/^ *//')
+LV_DATA=$( lvs -a --noheadings -o lv_name,lv_size --units s --nosuffix --separator , $VG | sed -e 's/^ *//')
 SAVEDIFS=$IFS
 for LV in $LV_DATA; do
   IFS=,
   read LVNAME LVSIZE <<< "$LV"
   if [ "$LVNAME" == "$META_LV_NAME" ]; then
+    META_LV_SIZE=$LVSIZE
+  elif [ "$LVNAME" == "[$META_LV_NAME]" ]; then
     META_LV_SIZE=$LVSIZE
   elif [ "$LVNAME" == "$DATA_LV_NAME" ]; then
     DATA_LV_SIZE=$LVSIZE
@@ -236,5 +309,11 @@ else
   lvcreate -l "$DEFAULT_DATA_SIZE_PERCENT%FREE" -n $DATA_LV_NAME $VG
 fi
 
-setup_lvm_data_meta_mode
+# Set up lvm thin pool LV
+if is_lvm_pool_mode;then
+  setup_lvm_thin_pool
+else
+  setup_lvm_data_meta_mode
+fi
+
 write_storage_config_file
