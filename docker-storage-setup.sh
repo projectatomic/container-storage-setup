@@ -56,6 +56,25 @@ DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV
 EOF
 }
 
+# This is the existing mode where we setup lvm data and meta volumes ofr
+# docker use
+setup_lvm_data_meta_mode () {
+  DATA_LV_PATH=/dev/$VG/$DATA_LV_NAME
+  META_LV_PATH=/dev/$VG/$META_LV_NAME
+
+  # Handle the unlikely case where /dev/$VG/docker-{data,meta} do not exist
+  if [ ! -e /dev/$VG/$DATA_LV_NAME ] || [ ! -e /dev/$VG/$META_LV_NAME ]; then
+    eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
+      eval $line
+      if [ "$LVM2_LV_NAME" = "$DATA_LV_NAME" ]; then
+        echo DATA_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
+      elif [ "$LVM2_LV_NAME" = "$META_LV_NAME" ]; then
+        echo META_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
+      fi
+    done )
+  fi
+}
+
 
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
@@ -210,20 +229,5 @@ else
   lvcreate -l "100%FREE" -n $DATA_LV_NAME $VG
 fi
 
-# Write config for docker unit
-DATA_LV_PATH=/dev/$VG/$DATA_LV_NAME
-META_LV_PATH=/dev/$VG/$META_LV_NAME
-
-# Handle the unlikely case where /dev/$VG/docker-{data,meta} do not exist
-if [ ! -e /dev/$VG/$DATA_LV_NAME ] || [ ! -e /dev/$VG/$META_LV_NAME ]; then
-  eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
-    eval $line
-    if [ "$LVM2_LV_NAME" = "$DATA_LV_NAME" ]; then
-      echo DATA_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
-    elif [ "$LVM2_LV_NAME" = "$META_LV_NAME" ]; then
-      echo META_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
-    fi
-  done )
-fi
-
+setup_lvm_data_meta_mode
 write_storage_config_file
