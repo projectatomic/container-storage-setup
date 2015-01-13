@@ -54,7 +54,7 @@ META_LV_NAME="docker-meta"
 # internal spare logical volume used for thin meta data repair. Currently
 # we use .1% of VG size as meta volume size. So 2% of VG size should be
 # good enough for spare volume.
-DEFAULT_DATA_SIZE_PERCENT="100"
+DEFAULT_DATA_SIZE_PERCENT="98"
 
 write_storage_config_file () {
 cat <<EOF >/etc/sysconfig/docker-storage
