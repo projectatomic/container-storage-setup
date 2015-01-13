@@ -50,6 +50,12 @@ set -e
 DATA_LV_NAME="docker-data"
 META_LV_NAME="docker-meta"
 
+# LVM thin pool expect some space free in volume group so that it can manage
+# internal spare logical volume used for thin meta data repair. Currently
+# we use .1% of VG size as meta volume size. So 2% of VG size should be
+# good enough for spare volume.
+DEFAULT_DATA_SIZE_PERCENT="100"
+
 write_storage_config_file () {
 cat <<EOF >/etc/sysconfig/docker-storage
 DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV_PATH --storage-opt dm.metadatadev=$META_LV_PATH
@@ -216,7 +222,7 @@ if [ -n "$DATA_LV_SIZE" ]; then
       lvextend -L $DATA_SIZE $VG/$DATA_LV_NAME || true
     fi
   else
-    lvextend -l "+100%FREE" $VG/$DATA_LV_NAME || true
+    lvextend -l "+$DEFAULT_DATA_SIZE_PERCENT%FREE" $VG/$DATA_LV_NAME || true
   fi
 elif [ -n "$DATA_SIZE" ]; then
   # TODO: Error handling when DATA_SIZE > available space.
@@ -226,7 +232,7 @@ elif [ -n "$DATA_SIZE" ]; then
     lvcreate -L $DATA_SIZE -n $DATA_LV_NAME $VG
   fi
 else
-  lvcreate -l "100%FREE" -n $DATA_LV_NAME $VG
+  lvcreate -l "$DEFAULT_DATA_SIZE_PERCENT%FREE" -n $DATA_LV_NAME $VG
 fi
 
 setup_lvm_data_meta_mode
