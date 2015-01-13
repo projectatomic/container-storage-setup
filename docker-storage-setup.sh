@@ -47,6 +47,9 @@ set -e
 # if given multiple PVs and another variable; options could be just a simple
 # "mirror" or "stripe", or something more detailed.
 
+DATA_LV_NAME="docker-data"
+META_LV_NAME="docker-meta"
+
 write_storage_config_file () {
 cat <<EOF >/etc/sysconfig/docker-storage
 DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV_PATH --storage-opt dm.metadatadev=$META_LV_PATH
@@ -156,9 +159,9 @@ LV_DATA=$( lvs --noheadings -o lv_name,lv_size --units s --nosuffix --separator 
 for LV in $LV_DATA; do
   IFS=,
   read LVNAME LVSIZE <<< "$LV"
-  if [ "$LVNAME" == "docker-meta" ]; then
+  if [ "$LVNAME" == "$META_LV_NAME" ]; then
     META_LV_SIZE=$LVSIZE
-  elif [ "$LVNAME" == "docker-data" ]; then
+  elif [ "$LVNAME" == "$DATA_LV_NAME" ]; then
     DATA_LV_SIZE=$LVSIZE
   fi
 done
@@ -173,10 +176,10 @@ if [ -n "$META_LV_SIZE" ]; then
   if [ "$META_LV_SIZE" -lt "$META_SIZE" ]; then
     # Keep this nonfatal, since we already have a metadata LV
     # of _some_ size
-    lvextend -L ${META_SIZE}s /dev/$VG/docker-meta || true
+    lvextend -L ${META_SIZE}s /dev/$VG/$META_LV_NAME || true
   fi
 else
-  lvcreate -L ${META_SIZE}s -n docker-meta $VG
+  lvcreate -L ${META_SIZE}s -n $META_LV_NAME $VG
 fi
 
 # FIXME: The code below all becomes very strange when you consider
@@ -189,35 +192,35 @@ if [ -n "$DATA_LV_SIZE" ]; then
   # lvextend fail.
   if [ -n "$DATA_SIZE" ]; then
     if [[ $DATA_SIZE == *%* ]]; then
-      lvextend -l $DATA_SIZE /dev/$VG/docker-data || true
+      lvextend -l $DATA_SIZE /dev/$VG/$DATA_LV_NAME || true
     else
-      lvextend -L $DATA_SIZE /dev/$VG/docker-data || true
+      lvextend -L $DATA_SIZE /dev/$VG/$DATA_LV_NAME || true
     fi
   else
-    lvextend -l "+100%FREE" /dev/$VG/docker-data || true
+    lvextend -l "+100%FREE" /dev/$VG/$DATA_LV_NAME || true
   fi
 elif [ -n "$DATA_SIZE" ]; then
   # TODO: Error handling when DATA_SIZE > available space.
   if [[ $DATA_SIZE == *%* ]]; then
-    lvcreate -l $DATA_SIZE -n docker-data $VG
+    lvcreate -l $DATA_SIZE -n $DATA_LV_NAME $VG
   else
-    lvcreate -L $DATA_SIZE -n docker-data $VG
+    lvcreate -L $DATA_SIZE -n $DATA_LV_NAME $VG
   fi
 else
-  lvcreate -l "100%FREE" -n docker-data $VG
+  lvcreate -l "100%FREE" -n $DATA_LV_NAME $VG
 fi
 
 # Write config for docker unit
-DATA_LV_PATH=/dev/$VG/docker-data
-META_LV_PATH=/dev/$VG/docker-meta
+DATA_LV_PATH=/dev/$VG/$DATA_LV_NAME
+META_LV_PATH=/dev/$VG/$META_LV_NAME
 
 # Handle the unlikely case where /dev/$VG/docker-{data,meta} do not exist
-if [ ! -e /dev/$VG/docker-data ] || [ ! -e /dev/$VG/docker-meta ]; then
+if [ ! -e /dev/$VG/$DATA_LV_NAME ] || [ ! -e /dev/$VG/$META_LV_NAME ]; then
   eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
     eval $line
-    if [ "$LVM2_LV_NAME" = "docker-data" ]; then
+    if [ "$LVM2_LV_NAME" = "$DATA_LV_NAME" ]; then
       echo DATA_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
-    elif [ "$LVM2_LV_NAME" = "docker-meta" ]; then
+    elif [ "$LVM2_LV_NAME" = "$META_LV_NAME" ]; then
       echo META_LV_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
     fi
   done )
