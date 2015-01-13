@@ -176,7 +176,7 @@ if [ -n "$META_LV_SIZE" ]; then
   if [ "$META_LV_SIZE" -lt "$META_SIZE" ]; then
     # Keep this nonfatal, since we already have a metadata LV
     # of _some_ size
-    lvextend -L ${META_SIZE}s /dev/$VG/$META_LV_NAME || true
+    lvextend -L ${META_SIZE}s $VG/$META_LV_NAME || true
   fi
 else
   lvcreate -L ${META_SIZE}s -n $META_LV_NAME $VG
@@ -192,12 +192,12 @@ if [ -n "$DATA_LV_SIZE" ]; then
   # lvextend fail.
   if [ -n "$DATA_SIZE" ]; then
     if [[ $DATA_SIZE == *%* ]]; then
-      lvextend -l $DATA_SIZE /dev/$VG/$DATA_LV_NAME || true
+      lvextend -l $DATA_SIZE $VG/$DATA_LV_NAME || true
     else
-      lvextend -L $DATA_SIZE /dev/$VG/$DATA_LV_NAME || true
+      lvextend -L $DATA_SIZE $VG/$DATA_LV_NAME || true
     fi
   else
-    lvextend -l "+100%FREE" /dev/$VG/$DATA_LV_NAME || true
+    lvextend -l "+100%FREE" $VG/$DATA_LV_NAME || true
   fi
 elif [ -n "$DATA_SIZE" ]; then
   # TODO: Error handling when DATA_SIZE > available space.
