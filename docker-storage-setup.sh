@@ -46,6 +46,14 @@ set -e
 # * Support lvm raid setups for docker data?  This would not be very difficult
 # if given multiple PVs and another variable; options could be just a simple
 # "mirror" or "stripe", or something more detailed.
+
+write_storage_config_file () {
+cat <<EOF >/etc/sysconfig/docker-storage
+DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV_PATH --storage-opt dm.metadatadev=$META_LV_PATH
+EOF
+}
+
+
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
 fi
@@ -215,6 +223,4 @@ if [ ! -e /dev/$VG/docker-data ] || [ ! -e /dev/$VG/docker-meta ]; then
   done )
 fi
 
-cat <<EOF >/etc/sysconfig/docker-storage
-DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.datadev=$DATA_LV_PATH --storage-opt dm.metadatadev=$META_LV_PATH
-EOF
+write_storage_config_file
