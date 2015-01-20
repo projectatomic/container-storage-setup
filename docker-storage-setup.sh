@@ -111,9 +111,67 @@ setup_lvm_thin_pool () {
     done )
 }
 
+lvm_data_volume_exists() {
+  local lv_data lvname
+
+  lv_data=$( lvs --noheadings -o lv_name $VG | sed -e 's/^ *//')
+  for lvname in $lv_data; do
+    if [ "$lvname" == "$DATA_LV_NAME" ]; then
+	    return 0
+    fi
+  done
+
+  return 1
+}
+
+lvm_metadata_volume_exists() {
+  local lv_data lvname
+
+  lv_data=$( lvs --noheadings -o lv_name $VG | sed -e 's/^ *//')
+  for lvname in $lv_data; do
+    if [ "$lvname" == "$META_LV_NAME" ]; then
+	    return 0
+    fi
+  done
+
+  return 1
+}
+
+# determines if one should use lvm pool mode or not.
+should_use_lvm_pool_mode() {
+  if [ "$SETUP_LVM_THIN_POOL" == "yes" ];then
+    return 0
+  fi
+
+  # If pool already exists, then use lvm pool mode.
+  if lvm_pool_exists; then
+    return 0
+  fi
+
+  # Use lvm pool mode as default if user there is no docker-storage-setup
+  # file present. Make sure that docker-data and docker-meta volumes are
+  # not present (possible after upgrade).
+
+  # docker-stroage-setup exists and user has not set pool mode. So don't
+  # use it.
+  if [ -e /etc/sysconfig/docker-storage-setup ];then
+    return 1
+  fi
+
+  # It is possible that it is an upgrade and docker-storage-setup does
+  # not exist. Make sure there are no data, metadata volume which
+  # exist pre-upgrade.
+  if lvm_data_volume_exists || lvm_metadata_volume_exists; then
+    return 1
+  fi
+
+  # Use lvm pool mode by default.
+  return 0
+}
+
 # Should return true either if SETUP_LVM_THIN_POOL=yes in config file.
 is_lvm_pool_mode () {
-  if [ "$SETUP_LVM_THIN_POOL" == "yes" ];then
+  if [ "$USE_LVM_POOL_MODE" == "yes" ];then
     return 0
   fi
 
@@ -143,6 +201,11 @@ lvm_pool_exists() {
 
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
+fi
+
+# Determine if pool mode should be used on current setup or not.
+if should_use_lvm_pool_mode; then
+  USE_LVM_POOL_MODE=yes
 fi
 
 # In lvm thin pool mode, effectively data LV is named as pool LV. lvconvert
