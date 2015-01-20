@@ -122,14 +122,20 @@ is_lvm_pool_mode () {
 
 lvm_pool_exists() {
   local lv_data
-  local lvname
+  local lvname lv lvsize
 
-  lv_data=$( lvs --noheadings -o lv_name $VG | sed -e 's/^ *//')
-  for lvname in $lv_data; do
-    if [ "$lvname" == "$POOL_LV_NAME" ]; then
+  lv_data=$( lvs --noheadings -o lv_name,lv_attr --separator , $VG | sed -e 's/^ *//')
+  SAVEDIFS=$IFS
+  for lv in $lv_data; do
+  IFS=,
+  read lvname lvattr <<< "$lv"
+    # pool logical volume has "t" as first character in its attributes
+    if [ "$lvname" == "$POOL_LV_NAME" ] && [[ $lvattr == t* ]]; then
+            IFS=$SAVEDIFS
 	    return 0
     fi
   done
+  IFS=$SAVEDIFS
 
   return 1
 }
