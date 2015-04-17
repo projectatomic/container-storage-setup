@@ -13,6 +13,7 @@ BuildRequires:  pkgconfig(systemd)
 Requires:       lvm2
 Requires:       cloud-utils-growpart
 Requires:       systemd-units
+Requires:       xfsprogs 
 
 %description
 This is a simple service to divide available storage between
