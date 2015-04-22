@@ -90,7 +90,7 @@ setup_lvm_data_meta_mode () {
 }
 
 create_lvm_thin_pool () {
-  lvconvert -y --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
+  lvconvert -y --zero n --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
   if [ $? -ne 0 ];then
     echo "Converting $VG/docker-data and $VG/docker-meta to LVM thin pool failed. Exiting."
     exit 1
