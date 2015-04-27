@@ -63,6 +63,8 @@ META_LV_NAME="${POOL_LV_NAME}meta"
 # good enough for spare volume.
 DEFAULT_DATA_SIZE_PERCENT="98"
 
+DOCKER_STORAGE="/etc/sysconfig/docker-storage"
+
 write_storage_config_file () {
   local storage_options
 
@@ -75,7 +77,7 @@ write_storage_config_file () {
     done )
 
   storage_options="DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH"
-cat <<EOF >/etc/sysconfig/docker-storage
+cat <<EOF > $DOCKER_STORAGE
 $storage_options
 EOF
 }
@@ -154,9 +156,30 @@ lvm_pool_exists() {
   return 1
 }
 
+# If a /etc/sysconfig/docker-storage file is present and if it contains
+# dm.datadev or dm.metadatadev entries, that means we have used old mode
+# in the past.
+is_old_data_meta_mode() {
+  if [ ! -f "$DOCKER_STORAGE" ];then
+    return 1
+  fi
+
+  if ! grep -e "^DOCKER_STORAGE_OPTIONS=.*dm\.datadev" -e "^DOCKER_STORAGE_OPTIONS=.*dm\.metadatadev" $DOCKER_STORAGE  > /dev/null 2>&1;then
+    return 1
+  fi
+
+  return 0
+}
+
+
 # Main Script
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
+fi
+
+if is_old_data_meta_mode; then
+  echo "ERROR: Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
+  exit 1
 fi
 
 # Read mounts
