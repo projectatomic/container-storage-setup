@@ -335,18 +335,8 @@ for LV in $LV_DATA; do
 done
 IFS=$SAVEDIFS
 
-# NB:  The code below all becomes very strange when you consider
-# the case of a reboot.  If the config file is using "%FREE" specifications,
-# it will grow on each reboot until the VG is full.
-
 META_SIZE=$(( $VG_SIZE / 1000 + 1 ))
-if [ -n "$META_LV_SIZE" ]; then
-  if [ "$META_LV_SIZE" -lt "$META_SIZE" ]; then
-    # Keep this nonfatal, since we already have a metadata LV
-    # of _some_ size
-    lvextend -L ${META_SIZE}s $VG/$META_LV_NAME || true
-  fi
-else
+if [ ! -n "$META_LV_SIZE" ]; then
   lvcreate -L ${META_SIZE}s -n $META_LV_NAME $VG
 fi
 
