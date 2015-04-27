@@ -364,8 +364,6 @@ if [ -n "$DATA_LV_SIZE" ]; then
     else
       lvextend -L $DATA_SIZE $VG/$DATA_LV_NAME || true
     fi
-  else
-    lvextend -l "+$DEFAULT_DATA_SIZE_PERCENT%FREE" $VG/$DATA_LV_NAME || true
   fi
 elif [ -n "$DATA_SIZE" ]; then
   # TODO: Error handling when DATA_SIZE > available space.
