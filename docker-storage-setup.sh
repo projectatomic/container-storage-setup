@@ -131,6 +131,7 @@ extend_data_lv () {
 setup_lvm_thin_pool () {
   if ! lvm_pool_exists; then
     create_lvm_thin_pool
+    write_storage_config_file
   else
     extend_data_lv
   fi
@@ -274,4 +275,3 @@ fi
 
 # Set up lvm thin pool LV
 setup_lvm_thin_pool
-write_storage_config_file
