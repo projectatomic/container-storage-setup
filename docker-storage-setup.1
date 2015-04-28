@@ -1,8 +1,7 @@
 .TH "DOCKER-STORAGE-SETUP" "1" "NOVEMBER 2014" "Helper Script for Docker Storage Setup" ""
 .SH NAME
 .PP
-docker\-storage\-setup - Grows the root filesystem and sets up LVM volumes for docker 
-metadata and data.
+docker\-storage\-setup - Grows the root filesystem and sets up a LVM thin pool for docker.
 .SH SYNOPSIS
 .PP
 \f[B]docker-storage-setup\f[] 
@@ -12,6 +11,9 @@ None.
 .SH EXAMPLES
 Run \f[B]docker-storage-setup\f[] after setting up your configuration in 
 /etc/sysconfig/docker-storage-setup. 
+
+lvm2 version should be same or higher than lvm2-2.02.112 for lvm thin pool
+functionality to work properly.
 
 \f[B]Supported options for the configuration file\f[]:
 
@@ -25,10 +27,6 @@ VG:   The volume group to use for docker storage.  Defaults to the
       specified and the volume group does not exist, it will be
       created (which requires that "DEVS" be nonempty, since we don't
       currently support putting a second partition on the root disk).
-
-SETUP_LVM_THIN_POOL:
-      If set to "yes", then an LVM thin pool will be setup which
-      is passed to docker.
 
       lvm2 version should be same or higher than lvm2-2.02.112 for lvm
       thin pool functionality to work properly.
