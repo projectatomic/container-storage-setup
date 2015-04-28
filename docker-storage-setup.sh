@@ -77,9 +77,10 @@ write_storage_config_file () {
     done )
 
   storage_options="DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH"
-cat <<EOF > $DOCKER_STORAGE
+cat <<EOF > $DOCKER_STORAGE.tmp
 $storage_options
 EOF
+  mv $DOCKER_STORAGE.tmp $DOCKER_STORAGE
 }
 
 create_metadata_lv() {
