@@ -7,6 +7,7 @@ License:        ASL 2.0
 URL:            http://github.com/a13m/docker-storage-setup/
 Source0:        docker-storage-setup.sh
 Source1:        docker-storage-setup.service
+Source2:        docker-storage-setup.conf
 
 BuildRequires:  pkgconfig(systemd)
 
@@ -28,8 +29,8 @@ install -d %{buildroot}%{_bindir}
 install -p -m 755 %{SOURCE0} %{buildroot}%{_bindir}/docker-storage-setup
 install -d %{buildroot}%{_unitdir}
 install -p -m 644 %{SOURCE1} %{buildroot}%{_unitdir}
-# install -d %{buildroot}%{_sysconfdir}/sysconfig/
-# install -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage-setup
+install -d %{buildroot}%{_sysconfdir}/sysconfig/
+install -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage-setup
 
 %post
 %systemd_post %{name}.service
@@ -43,7 +44,7 @@ install -p -m 644 %{SOURCE1} %{buildroot}%{_unitdir}
 %files
 %{_unitdir}/docker-storage-setup.service
 %{_bindir}/docker-storage-setup
-# %{_sysconfdir}/sysconfig/docker-storage-setup
+%config(noreplace) %{_sysconfdir}/sysconfig/docker-storage-setup
 
 %changelog
 * Thu Oct 16 2014 Andy Grimm <agrimm@redhat.com> - 0.0.1-2
