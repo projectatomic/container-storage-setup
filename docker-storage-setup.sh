@@ -115,26 +115,10 @@ create_lvm_thin_pool () {
   lvconvert -y --zero n --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
 }
 
-# If user specified DATA_SIZE and current pool is smaller, extend it.
-extend_data_lv () {
-  # TODO: Figure out failure cases other than when the requested
-  # size is larger than the current size.  For now, we just let
-  # lvextend fail.
-  if [ -n "$DATA_SIZE" ]; then
-    if [[ $DATA_SIZE == *%* ]]; then
-      lvextend -l $DATA_SIZE $VG/$DATA_LV_NAME || true
-    else
-      lvextend -L $DATA_SIZE $VG/$DATA_LV_NAME || true
-    fi
-  fi
-}
-
 setup_lvm_thin_pool () {
   if ! lvm_pool_exists; then
     create_lvm_thin_pool
     write_storage_config_file
-  else
-    extend_data_lv
   fi
 }
 
