@@ -36,8 +36,15 @@ The options below should be specified as values acceptable to 'lvextend -L':
 ROOT_SIZE: The size to which the root filesystem should be grown.
 
 DATA_SIZE: The desired size for the docker data LV.  Defaults to using
-           all free space in the VG after the root LV and docker
+           98% free space in the VG after the root LV and docker
            metadata LV have been allocated/grown.
+
+           DATA_SIZE can take values acceptable to "lvcreate -L" as
+           well as some values acceptable to to "lvcreate -l". If user
+           intends to pass values acceptable to "lvcreate -l", then
+           only those values which contains "%" in syntax are
+           acceptable.  If value does not contain "%" it is assumed
+           value is suitable for "lvcreate -L".
 
 
 \f[B]Sample\f[]
