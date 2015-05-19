@@ -171,6 +171,46 @@ grow_root_pvs() {
   done
 }
 
+create_disk_partitions() {
+  for dev in $DEVS; do
+    if expr match $dev ".*[0-9]"; then
+      echo "Partition specification unsupported at this time." >&2
+      exit 1
+    fi
+    if [[ $dev != /dev/* ]]; then
+      dev=/dev/$dev
+    fi
+    # Use a single partition of a whole device
+    # TODO:
+    #   * Consider gpt, or unpartitioned volumes
+    #   * Error handling when partition(s) already exist
+    #   * Deal with loop/nbd device names. See growpart code
+    PARTS=$( awk "\$4 ~ /"$( basename $dev )"[0-9]/ { print \$4 }" /proc/partitions )
+    if [ -n "$PARTS" ]; then
+      echo "$dev has partitions: $PARTS"
+      exit 1
+    fi
+    size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
+    cat <<EOF | sfdisk $dev
+unit: sectors
+
+${dev}1 : start=     2048, size=  ${size}, Id=8e
+EOF
+    pvcreate ${dev}1
+    PVS="$PVS ${dev}1"
+  done
+}
+
+create_extend_volume_group() {
+  if [ -z "$VG_EXISTS" ]; then
+    vgcreate $VG $PVS
+  else
+    # TODO:
+    #   * Error handling when PV is already part of a VG
+    vgextend $VG $PVS
+  fi
+}
+
 # Main Script
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
@@ -204,44 +244,9 @@ if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
   exit 1
 fi
 
-PVS=
-
 if [ -n "$DEVS" ] ; then
-  for dev in $DEVS; do
-    if expr match $dev ".*[0-9]"; then
-      echo "Partition specification unsupported at this time." >&2
-      exit 1
-    fi
-    if [[ $dev != /dev/* ]]; then
-      dev=/dev/$dev
-    fi
-    # Use a single partition of a whole device
-    # TODO:
-    #   * Consider gpt, or unpartitioned volumes
-    #   * Error handling when partition(s) already exist
-    #   * Deal with loop/nbd device names. See growpart code
-    PARTS=$( awk "\$4 ~ /"$( basename $dev )"[0-9]/ { print \$4 }" /proc/partitions )
-    if [ -n "$PARTS" ]; then
-      echo "$dev has partitions: $PARTS"
-      exit 1
-    fi
-    size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
-    cat <<EOF | sfdisk $dev
-unit: sectors
-
-${dev}1 : start=     2048, size=  ${size}, Id=8e
-EOF
-    pvcreate ${dev}1
-    PVS="$PVS ${dev}1"
-  done
-
-  if [ -z "$VG_EXISTS" ]; then
-    vgcreate $VG $PVS
-  else
-    # TODO:
-    #   * Error handling when PV is already part of a VG
-    vgextend $VG $PVS
-  fi
+  create_disk_partitions
+  create_extend_volume_group
 fi
 
 grow_root_pvs
