@@ -158,6 +158,8 @@ is_old_data_meta_mode() {
 }
 
 grow_root_pvs() {
+  [ -x "/usr/bin/growpart" ] || return
+
   # Note that growpart is only variable here because we may someday support
   # using separate partitions on the same disk.  Today we fail early in that
   # case.  Also note that the way we are doing this, it should support LVM

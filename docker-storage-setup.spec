@@ -12,7 +12,6 @@ Source2:        docker-storage-setup.conf
 BuildRequires:  pkgconfig(systemd)
 
 Requires:       lvm2
-Requires:       cloud-utils-growpart
 Requires:       systemd-units
 Requires:       xfsprogs 
 
