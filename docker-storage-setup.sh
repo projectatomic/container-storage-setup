@@ -214,6 +214,12 @@ create_extend_volume_group() {
 }
 
 # Main Script
+if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
+  source /usr/lib/docker-storage-setup/docker-storage-setup
+fi
+
+# If user has overridden any settings in /etc/sysconfig/docker-storage-setup
+# take that into account.
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
 fi
