@@ -35,6 +35,12 @@ VG:   The volume group to use for docker storage.  Defaults to the
       lvm2 version should be same or higher than lvm2-2.02.112 for lvm
       thin pool functionality to work properly.
 
+GROWPART:
+      One can use this option to enable/disable growing of partition
+      table backing root volume group. This is intended for virtualization
+      and cloud installations. By default it is disabled. Use GROWPART=true
+      to enable automatic partition table resizing.
+
 The options below should be specified as values acceptable to 'lvextend -L':
 
 ROOT_SIZE: The size to which the root filesystem should be grown.
