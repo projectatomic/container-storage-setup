@@ -157,6 +157,19 @@ is_old_data_meta_mode() {
   return 0
 }
 
+grow_root_pvs() {
+  # Note that growpart is only variable here because we may someday support
+  # using separate partitions on the same disk.  Today we fail early in that
+  # case.  Also note that the way we are doing this, it should support LVM
+  # RAID for the root device.  In the mirrored or striped case, we are growing
+  # partitions on all disks, so as long as they match, growing the LV should
+  # also work.
+  for pv in $ROOT_PVS; do
+    # Split device & partition.  Ick.
+    growpart $( echo $pv | sed -r 's/([^0-9]*)([0-9]+)/\1 \2/' ) || true
+    pvresize $pv
+  done
+}
 
 # Main Script
 if [ -e /etc/sysconfig/docker-storage-setup ]; then
@@ -192,7 +205,6 @@ if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
 fi
 
 PVS=
-GROWPART=
 
 if [ -n "$DEVS" ] ; then
   for dev in $DEVS; do
@@ -230,24 +242,9 @@ EOF
     #   * Error handling when PV is already part of a VG
     vgextend $VG $PVS
   fi
-  GROWPART=1
-elif [ "$ROOT_VG" == "$VG" ]; then
-  GROWPART=1
 fi
 
-# Note that growpart is only variable here because we may someday support
-# using separate partitions on the same disk.  Today we fail early in that
-# case.  Also note that the way we are doing this, it should support LVM
-# RAID for the root device.  In the mirrored or striped case, we are growing
-# partitions on all disks, so as long as they match, growing the LV should
-# also work.
-if [ -n "$GROWPART" ]; then
-  for pv in $ROOT_PVS; do
-    # Split device & partition.  Ick.
-    growpart $( echo $pv | sed -r 's/([^0-9]*)([0-9]+)/\1 \2/' ) || true
-    pvresize $pv
-  done
-fi
+grow_root_pvs
 
 # NB: We are growing root here first, because when root and docker share a
 # disk, we'll default to giving docker "everything else."  This will be a
