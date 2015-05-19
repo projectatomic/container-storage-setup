@@ -12,7 +12,6 @@ Source2:        docker-storage-setup.conf
 BuildRequires:  pkgconfig(systemd)
 
 Requires:       lvm2
-Requires:       cloud-utils-growpart
 Requires:       systemd-units
 Requires:       xfsprogs 
 
@@ -29,8 +28,8 @@ install -d %{buildroot}%{_bindir}
 install -p -m 755 %{SOURCE0} %{buildroot}%{_bindir}/docker-storage-setup
 install -d %{buildroot}%{_unitdir}
 install -p -m 644 %{SOURCE1} %{buildroot}%{_unitdir}
-install -d %{buildroot}%{_sysconfdir}/sysconfig/
-install -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage-setup
+install -d %{buildroot}%{_libdir}/docker-storage-setup/
+install -p -m 644 %{SOURCE2} %{buildroot}%{_libdir}/docker-storage-setup/docker-storage-setup
 
 %post
 %systemd_post %{name}.service
@@ -44,7 +43,7 @@ install -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage
 %files
 %{_unitdir}/docker-storage-setup.service
 %{_bindir}/docker-storage-setup
-%config(noreplace) %{_sysconfdir}/sysconfig/docker-storage-setup
+%{_libdir}/docker-storage-setup/docker-storage-setup
 
 %changelog
 * Thu Oct 16 2014 Andy Grimm <agrimm@redhat.com> - 0.0.1-2
