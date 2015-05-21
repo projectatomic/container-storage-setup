@@ -56,6 +56,10 @@ POOL_AUTOEXTEND_PERCENT:
       that when threhold is hit, pool will be grown by 20% of existing
       pool size.
 
+CHUNK_SIZE:
+      Controls the chunk size/block size of thin pool. Value of CHUNK_SIZE
+      be suitable to be passed to --chunk-size option of lvconvert.
+
 The options below should be specified as values acceptable to 'lvextend -L':
 
 ROOT_SIZE: The size to which the root filesystem should be grown.

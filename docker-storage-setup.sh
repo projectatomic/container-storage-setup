@@ -107,7 +107,10 @@ create_lvm_thin_pool () {
   create_metadata_lv
   create_data_lv
 
-  lvconvert -y --zero n --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
+  if [ -n "$CHUNK_SIZE" ]; then
+    CHUNK_SIZE_ARG="-c $CHUNK_SIZE"
+  fi
+  lvconvert -y --zero n $CHUNK_SIZE_ARG --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
 }
 
 setup_lvm_thin_pool () {
