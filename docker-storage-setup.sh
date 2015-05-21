@@ -216,6 +216,54 @@ create_extend_volume_group() {
   fi
 }
 
+# Auto extension logic. Create a profile for pool and attach that profile
+# the pool volume.
+enable_auto_pool_extension() {
+  local volume_group=$1
+  local pool_volume=$2
+  local profileName="${volume_group}--${pool_volume}-extend"
+  local profileFile="${profileName}.profile"
+  local profileDir
+  local tmpFile=`mktemp tmp.XXXXX`
+
+  profileDir=$(lvm dumpconfig | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
+  [ -n "$profileDir" ] || return 1
+
+  if [ ! -n "$POOL_AUTOEXTEND_THRESHOLD" ];then
+    echo "POOL_AUTOEXTEND_THRESHOLD not specified"
+    return 1
+  fi
+
+  if [ ! -n "$POOL_AUTOEXTEND_PERCENT" ];then
+    echo "POOL_AUTOEXTEND_PERCENT not specified"
+    return 1
+  fi
+
+cat <<EOF > $tmpFile
+activation {
+	thin_pool_autoextend_threshold=${POOL_AUTOEXTEND_THRESHOLD}
+	thin_pool_autoextend_percent=${POOL_AUTOEXTEND_PERCENT}
+
+}
+EOF
+  mv $tmpFile ${profileDir}/${profileFile}
+  lvchange --metadataprofile ${profileName}  ${volume_group}/${pool_volume}
+}
+
+disable_auto_pool_extension() {
+  local volume_group=$1
+  local pool_volume=$2
+  local profileName="${volume_group}--${pool_volume}-extend"
+  local profileFile="${profileName}.profile"
+  local profileDir
+
+  profileDir=$(lvm dumpconfig | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
+  [ -n "$profileDir" ] || return 1
+
+  lvchange --detachprofile ${volume_group}/${pool_volume}
+  rm -f ${profileDir}/${profileFile}
+}
+
 # Main Script
 if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
   source /usr/lib/docker-storage-setup/docker-storage-setup
@@ -273,3 +321,10 @@ fi
 
 # Set up lvm thin pool LV
 setup_lvm_thin_pool
+
+# Enable or disable automatic pool extension
+if [ "$AUTO_EXTEND_POOL" == "yes" ];then
+  enable_auto_pool_extension ${VG} ${POOL_LV_NAME}
+else
+  disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
+fi
