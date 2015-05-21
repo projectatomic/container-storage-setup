@@ -41,6 +41,21 @@ GROWPART:
       and cloud installations. By default it is disabled. Use GROWPART=true
       to enable automatic partition table resizing.
 
+AUTO_EXTEND_POOL:
+      Enable automatic extension of pool by lvm. lvm can monitor
+      the pool and automatically extend it when pool is getting full.
+
+POOL_AUTOEXTEND_THRESHOLD:
+      Determines the pool extension threshold in terms of percentage
+      of pool size. For example, if threhold is 60, that means when
+      pool is 60% full, threshold has been hit.
+
+POOL_AUTOEXTEND_PERCENT:
+      Determines the amount by which pool needs to be grown. This is
+      specified in terms of % of pool size. So a value of 20 means
+      that when threhold is hit, pool will be grown by 20% of existing
+      pool size.
+
 The options below should be specified as values acceptable to 'lvextend -L':
 
 ROOT_SIZE: The size to which the root filesystem should be grown.
