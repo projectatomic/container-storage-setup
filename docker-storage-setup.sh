@@ -76,7 +76,7 @@ write_storage_config_file () {
     fi
     done )
 
-  storage_options="DOCKER_STORAGE_OPTIONS=--storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH"
+  storage_options="DOCKER_STORAGE_OPTIONS=-s devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH"
 cat <<EOF > $DOCKER_STORAGE.tmp
 $storage_options
 EOF
