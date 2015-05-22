@@ -1,6 +1,6 @@
 Name:           docker-storage-setup
-Version:        0.0.1
-Release:        2%{?dist}
+Version:        0.5
+Release:        1%{?dist}
 Summary:        A simple service to setup docker storage devices
 
 License:        ASL 2.0
@@ -16,8 +16,9 @@ Requires:       systemd-units
 Requires:       xfsprogs 
 
 %description
-This is a simple service to divide available storage between
-the OS and docker using LVM devices.
+This is a simple service to configure Docker to use an LVM-managed
+thin pool.  It also supports auto-growing both the pool as well
+as the root logical volume and partition table. 
 
 %prep
 
