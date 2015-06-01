@@ -156,7 +156,7 @@ is_old_data_meta_mode() {
 }
 
 grow_root_pvs() {
-  [ -x "/usr/bin/growpart" ] || return
+  [ -x "/usr/bin/growpart" ] || return 0
 
   # Grow root pvs only if user asked for it through config file.
   [ "$GROWPART" != "true" ] && return
