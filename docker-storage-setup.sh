@@ -222,7 +222,7 @@ enable_auto_pool_extension() {
   local profileName="${volume_group}--${pool_volume}-extend"
   local profileFile="${profileName}.profile"
   local profileDir
-  local tmpFile=`mktemp tmp.XXXXX`
+  local tmpFile=`mktemp -t tmp.XXXXX`
 
   profileDir=$(lvm dumpconfig | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
   [ -n "$profileDir" ] || return 1
