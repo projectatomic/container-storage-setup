@@ -78,6 +78,16 @@ EOF
 }
 
 create_metadata_lv() {
+  # If metadata lvm already exists (failures from previous run), then
+  # don't create it.
+  # TODO: Modify script to cleanup meta and data lvs if failure happened
+  # later. Don't exit with error leaving partially created lvs behind.
+
+  if lvs -a $VG/${META_LV_NAME} --noheadings &>/dev/null; then
+        echo "Metadata volume $META_LV_NAME already exists. Not creating a new one."
+	return 0
+  fi
+
   # Reserve 0.1% of the free space in the VG for docker metadata.
   # Calculating the based on actual data size might be better, but is
   # more difficult do to the range of possible inputs.
