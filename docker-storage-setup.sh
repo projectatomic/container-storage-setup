@@ -59,6 +59,34 @@ META_LV_NAME="${POOL_LV_NAME}meta"
 
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
 
+get_docker_version() {
+	local version
+
+	if ! version=$(docker version 2>/dev/null | grep "Client version" | cut -d ":" -f2 | sed 's/^ *//');then
+		return 1
+	fi
+	echo $version
+}
+
+get_deferred_removal_string() {
+	local version major minor
+
+	if ! version=$(get_docker_version);then
+		return 0
+	fi
+	[ -z "$version" ] && return 0
+
+	major=$(echo $version | cut -d "." -f1)
+	minor=$(echo $version | cut -d "." -f2)
+	[ -z "$major" ] && return 0
+	[ -z "$minor" ] && return 0
+
+	# docker 1.7 onwards supports deferred device removal. Enable it.
+	if [ "$major" -ge "1" ] && [ "$minor" -ge "7" ];then
+		echo "--storage-opt dm.use_deferred_removal=true"
+	fi
+}
+
 write_storage_config_file () {
   local storage_options
 
@@ -70,7 +98,8 @@ write_storage_config_file () {
     fi
     done )
 
-  storage_options="DOCKER_STORAGE_OPTIONS=-s devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH"
+  storage_options="DOCKER_STORAGE_OPTIONS=-s devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string)"
+
 cat <<EOF > $DOCKER_STORAGE.tmp
 $storage_options
 EOF
