@@ -353,7 +353,7 @@ grow_root_pvs
 
 if [ -n "$ROOT_SIZE" ]; then
   # TODO: Error checking if specified size is <= current size
-  lvextend -L $ROOT_SIZE $ROOT_DEV || true
+  lvextend -r -L $ROOT_SIZE $ROOT_DEV || true
 fi
 
 # Set up lvm thin pool LV
