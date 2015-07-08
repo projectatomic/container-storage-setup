@@ -157,6 +157,13 @@ setup_lvm_thin_pool () {
     create_lvm_thin_pool
     write_storage_config_file
   fi
+
+  # Enable or disable automatic pool extension
+  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
+    enable_auto_pool_extension ${VG} ${POOL_LV_NAME}
+  else
+    disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
+  fi
 }
 
 lvm_pool_exists() {
@@ -358,10 +365,3 @@ fi
 
 # Set up lvm thin pool LV
 setup_lvm_thin_pool
-
-# Enable or disable automatic pool extension
-if [ "$AUTO_EXTEND_POOL" == "yes" ];then
-  enable_auto_pool_extension ${VG} ${POOL_LV_NAME}
-else
-  disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
-fi
