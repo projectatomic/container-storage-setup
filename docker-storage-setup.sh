@@ -142,6 +142,11 @@ create_data_lv() {
 }
 
 create_lvm_thin_pool () {
+  if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
+    echo "Specified volume group $VG does not exists, and no devices were specified" >&2
+    exit 1
+  fi
+
   # First create metadata lv. Down the line let lvm2 create it automatically.
   create_metadata_lv
   create_data_lv
@@ -342,11 +347,6 @@ else
       break
     fi
   done
-fi
-
-if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
-  echo "Specified volume group $VG does not exists, and no devices were specified" >&2
-  exit 1
 fi
 
 if [ -n "$DEVS" ] ; then
