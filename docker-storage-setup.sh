@@ -326,11 +326,6 @@ if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
 fi
 
-if is_old_data_meta_mode; then
-  echo "ERROR: Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
-  exit 1
-fi
-
 # Read mounts
 ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
 ROOT_VG=$( lvs --noheadings -o vg_name $ROOT_DEV | sed -e 's/^ *//' -e 's/ *$//')
@@ -364,6 +359,11 @@ grow_root_pvs
 # NB: We are growing root here first, because when root and docker share a
 # disk, we'll default to giving some portion of remaining space to docker.
 grow_root_lv_fs
+
+if is_old_data_meta_mode; then
+  echo "ERROR: Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
+  exit 1
+fi
 
 # Set up lvm thin pool LV
 setup_lvm_thin_pool
