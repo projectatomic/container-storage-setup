@@ -229,7 +229,7 @@ grow_root_lv_fs() {
 
 create_disk_partitions() {
   for dev in $DEVS; do
-    if expr match $dev ".*[0-9]"; then
+    if expr match $dev ".*[0-9]" > /dev/null; then
       echo "Partition specification unsupported at this time." >&2
       exit 1
     fi
