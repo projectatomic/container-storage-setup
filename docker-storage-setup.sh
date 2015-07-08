@@ -220,6 +220,13 @@ grow_root_pvs() {
   done
 }
 
+grow_root_lv_fs() {
+  if [ -n "$ROOT_SIZE" ]; then
+    # TODO: Error checking if specified size is <= current size
+    lvextend -r -L $ROOT_SIZE $ROOT_DEV || true
+  fi
+}
+
 create_disk_partitions() {
   for dev in $DEVS; do
     if expr match $dev ".*[0-9]"; then
@@ -355,13 +362,8 @@ fi
 grow_root_pvs
 
 # NB: We are growing root here first, because when root and docker share a
-# disk, we'll default to giving docker "everything else."  This will be a
-# problem if someone tries to assign root a value like"100%FREE".
-
-if [ -n "$ROOT_SIZE" ]; then
-  # TODO: Error checking if specified size is <= current size
-  lvextend -r -L $ROOT_SIZE $ROOT_DEV || true
-fi
+# disk, we'll default to giving some portion of remaining space to docker.
+grow_root_lv_fs
 
 # Set up lvm thin pool LV
 setup_lvm_thin_pool
