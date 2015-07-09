@@ -98,7 +98,7 @@ get_devicemapper_config_options() {
     fi
     done )
 
-  storage_options="DOCKER_STORAGE_OPTIONS=-s devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string)"
+  storage_options="DOCKER_STORAGE_OPTIONS=--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string)"
   echo $storage_options
 }
 
