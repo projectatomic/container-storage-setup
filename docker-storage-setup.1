@@ -1,7 +1,7 @@
 .TH "DOCKER-STORAGE-SETUP" "1" "NOVEMBER 2014" "Helper Script for Docker Storage Setup" ""
 .SH NAME
 .PP
-docker\-storage\-setup - Grows the root filesystem and sets up a LVM thin pool for docker.
+docker\-storage\-setup - Grows the root filesystem and sets up storage for docker.
 .SH SYNOPSIS
 .PP
 \f[B]docker-storage-setup\f[] 
@@ -21,6 +21,12 @@ functionality to work properly.
 
 \f[B]Supported options for the configuration file\f[]:
 
+STORAGE_DRIVER:
+      Specify a storage driver to be used with docker. Default
+      driver is devicemapper. Other valid values are "overlay"
+      and "". Empty string tells docker-storage-setup to not do
+      any storage setup.
+
 DEVS: A quoted, space-separated list of devices to be used.  This
       currently expects the devices to be unpartitioned drives.  If
       "VG" is not specified, then use of the root disk's extra space
@@ -37,9 +43,10 @@ VG:   The volume group to use for docker storage.  Defaults to the
 
 GROWPART:
       One can use this option to enable/disable growing of partition
-      table backing root volume group. This is intended for virtualization
-      and cloud installations. By default it is disabled. Use GROWPART=true
-      to enable automatic partition table resizing.
+      table backing root volume group. This is intended for
+      virtualization and cloud installations. By default it is
+      disabled. Use GROWPART=true to enable automatic partition
+      table resizing.
 
 AUTO_EXTEND_POOL:
       Enable automatic extension of pool by lvm. lvm can monitor

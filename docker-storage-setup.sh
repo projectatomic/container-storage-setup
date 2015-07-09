@@ -58,6 +58,7 @@ DATA_LV_NAME=$POOL_LV_NAME
 META_LV_NAME="${POOL_LV_NAME}meta"
 
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
+STORAGE_DRIVERS="devicemapper overlay"
 
 get_docker_version() {
 	local version
@@ -87,7 +88,7 @@ get_deferred_removal_string() {
 	fi
 }
 
-write_storage_config_file () {
+get_devicemapper_config_options() {
   local storage_options
 
   # docker expects device mapper device and not lvm device. Do the conversion.
@@ -98,7 +99,26 @@ write_storage_config_file () {
     fi
     done )
 
-  storage_options="DOCKER_STORAGE_OPTIONS=-s devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string)"
+  storage_options="DOCKER_STORAGE_OPTIONS=--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string)"
+  echo $storage_options
+}
+
+get_overlay_config_options() {
+  echo "DOCKER_STORAGE_OPTIONS=--storage-driver overlay"
+}
+
+write_storage_config_file () {
+  local storage_options
+
+  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+    if ! storage_options=$(get_devicemapper_config_options); then
+      return 1
+    fi
+  elif [ "$STORAGE_DRIVER" == "overlay" ];then
+    if ! storage_options=$(get_overlay_config_options); then
+      return 1
+    fi
+  fi
 
 cat <<EOF > $DOCKER_STORAGE.tmp
 $storage_options
@@ -169,6 +189,10 @@ setup_lvm_thin_pool () {
   else
     disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
   fi
+}
+
+setup_overlay () {
+  write_storage_config_file
 }
 
 lvm_pool_exists() {
@@ -320,6 +344,107 @@ disable_auto_pool_extension() {
   rm -f ${profileDir}/${profileFile}
 }
 
+
+# Gets the current DOCKER_STORAGE_OPTIONS= string.
+get_docker_storage_options() {
+  local options
+  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" $DOCKER_STORAGE | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//');then
+    echo $options
+    return 0
+  fi
+
+  return 1
+}
+
+is_valid_storage_driver() {
+  local driver=$1 d
+
+  for d in $STORAGE_DRIVERS;do
+    [ "$driver" == "$d" ] && return 0
+  done
+
+  return 1
+}
+
+# Gets the existing storage driver configured in /etc/sysconfig/docker-storage
+get_existing_storage_driver() {
+  local options driver
+
+  if [ ! -f "$DOCKER_STORAGE" ];then
+    return 0
+  fi
+
+  if ! options=$(get_docker_storage_options); then
+    return 1
+  fi
+
+  # DOCKER_STORAGE_OPTIONS= is empty there is no storage driver configured yet.
+  [ -z "$options" ] && return 0
+
+  # Check if -storage-driver <driver> is there.
+  if ! driver=$(echo $options | sed -n 's/.*\(--storage-driver [ ]*[a-z]*\).*/\1/p' | sed 's/--storage-driver *//');then
+    return 1
+  fi
+
+  if [ -n "$driver" ] && [ ! "$driver" == "$options" ];then
+    echo $driver
+    return 0
+  fi
+
+  # Check if -s <driver> is there.
+  if ! driver=$(echo $options | sed -n 's/.*\(-s [ ]*[a-z]*\).*/\1/p' | sed 's/-s *//');then
+    return 1
+  fi
+
+  # If pattern does not match then driver == options.
+  if [ -n "$driver" ] && [ ! "$driver" == "$options" ];then
+    echo $driver
+    return 0
+  fi
+
+  # We shipped some versions where we did not specify -s devicemapper.
+  # If dm.thinpooldev= is present driver is devicemapper.
+  if echo $options | grep -q -e "--storage-opt dm.thinpooldev=";then
+    echo "devicemapper"
+    return 0
+  fi
+
+  #Failed to determine existing storage driver.
+  return 1
+}
+
+setup_storage() {
+  local current_driver
+
+  if [ "$STORAGE_DRIVER" == "" ];then
+    echo "No storage driver specified. Specify one using STORAGE_DRIVER option."
+    exit 0
+  fi
+
+  if ! is_valid_storage_driver $STORAGE_DRIVER;then
+    echo "Invalid storage driver: ${STORAGE_DRIVER}."
+    exit 1
+  fi
+
+  if ! current_driver=$(get_existing_storage_driver);then
+    echo "Failed to determine existing storage driver."
+    exit 1
+  fi
+
+  # If storage is configured and new driver should match old one.
+  if [ -n "$current_driver" ] && [ "$current_driver" != "$STORAGE_DRIVER" ];then
+   echo "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove $DOCKER_STORAGE and retry."
+   exit 1
+  fi
+
+  # Set up lvm thin pool LV
+  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+    setup_lvm_thin_pool
+  elif [ "$STORAGE_DRIVER" == "overlay" ];then
+    setup_overlay
+  fi
+}
+
 # Main Script
 if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
   source /usr/lib/docker-storage-setup/docker-storage-setup
@@ -365,5 +490,4 @@ if is_old_data_meta_mode; then
   exit 1
 fi
 
-# Set up lvm thin pool LV
-setup_lvm_thin_pool
+setup_storage
