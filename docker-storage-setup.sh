@@ -87,7 +87,7 @@ get_deferred_removal_string() {
 	fi
 }
 
-write_storage_config_file () {
+get_devicemapper_config_options() {
   local storage_options
 
   # docker expects device mapper device and not lvm device. Do the conversion.
@@ -99,6 +99,15 @@ write_storage_config_file () {
     done )
 
   storage_options="DOCKER_STORAGE_OPTIONS=-s devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string)"
+  echo $storage_options
+}
+
+write_storage_config_file () {
+  local storage_options
+
+  if ! storage_options=$(get_devicemapper_config_options); then
+	  return 1
+  fi
 
 cat <<EOF > $DOCKER_STORAGE.tmp
 $storage_options
