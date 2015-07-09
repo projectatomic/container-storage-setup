@@ -142,6 +142,11 @@ create_data_lv() {
 }
 
 create_lvm_thin_pool () {
+  if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
+    echo "Specified volume group $VG does not exists, and no devices were specified" >&2
+    exit 1
+  fi
+
   # First create metadata lv. Down the line let lvm2 create it automatically.
   create_metadata_lv
   create_data_lv
@@ -156,6 +161,13 @@ setup_lvm_thin_pool () {
   if ! lvm_pool_exists; then
     create_lvm_thin_pool
     write_storage_config_file
+  fi
+
+  # Enable or disable automatic pool extension
+  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
+    enable_auto_pool_extension ${VG} ${POOL_LV_NAME}
+  else
+    disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
   fi
 }
 
@@ -213,9 +225,16 @@ grow_root_pvs() {
   done
 }
 
+grow_root_lv_fs() {
+  if [ -n "$ROOT_SIZE" ]; then
+    # TODO: Error checking if specified size is <= current size
+    lvextend -r -L $ROOT_SIZE $ROOT_DEV || true
+  fi
+}
+
 create_disk_partitions() {
   for dev in $DEVS; do
-    if expr match $dev ".*[0-9]"; then
+    if expr match $dev ".*[0-9]" > /dev/null; then
       echo "Partition specification unsupported at this time." >&2
       exit 1
     fi
@@ -312,11 +331,6 @@ if [ -e /etc/sysconfig/docker-storage-setup ]; then
   source /etc/sysconfig/docker-storage-setup
 fi
 
-if is_old_data_meta_mode; then
-  echo "ERROR: Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
-  exit 1
-fi
-
 # Read mounts
 ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
 ROOT_VG=$( lvs --noheadings -o vg_name $ROOT_DEV | sed -e 's/^ *//' -e 's/ *$//')
@@ -335,11 +349,6 @@ else
   done
 fi
 
-if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
-  echo "Specified volume group $VG does not exists, and no devices were specified" >&2
-  exit 1
-fi
-
 if [ -n "$DEVS" ] ; then
   create_disk_partitions
   create_extend_volume_group
@@ -348,20 +357,13 @@ fi
 grow_root_pvs
 
 # NB: We are growing root here first, because when root and docker share a
-# disk, we'll default to giving docker "everything else."  This will be a
-# problem if someone tries to assign root a value like"100%FREE".
+# disk, we'll default to giving some portion of remaining space to docker.
+grow_root_lv_fs
 
-if [ -n "$ROOT_SIZE" ]; then
-  # TODO: Error checking if specified size is <= current size
-  lvextend -r -L $ROOT_SIZE $ROOT_DEV || true
+if is_old_data_meta_mode; then
+  echo "ERROR: Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
+  exit 1
 fi
 
 # Set up lvm thin pool LV
 setup_lvm_thin_pool
-
-# Enable or disable automatic pool extension
-if [ "$AUTO_EXTEND_POOL" == "yes" ];then
-  enable_auto_pool_extension ${VG} ${POOL_LV_NAME}
-else
-  disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
-fi
