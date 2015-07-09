@@ -58,6 +58,7 @@ DATA_LV_NAME=$POOL_LV_NAME
 META_LV_NAME="${POOL_LV_NAME}meta"
 
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
+STORAGE_DRIVERS="devicemapper"
 
 get_docker_version() {
 	local version
@@ -105,8 +106,10 @@ get_devicemapper_config_options() {
 write_storage_config_file () {
   local storage_options
 
-  if ! storage_options=$(get_devicemapper_config_options); then
-	  return 1
+  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+    if ! storage_options=$(get_devicemapper_config_options); then
+      return 1
+    fi
   fi
 
 cat <<EOF > $DOCKER_STORAGE.tmp
@@ -329,6 +332,35 @@ disable_auto_pool_extension() {
   rm -f ${profileDir}/${profileFile}
 }
 
+is_valid_storage_driver() {
+  local driver=$1 d
+
+  for d in $STORAGE_DRIVERS;do
+    [ "$driver" == "$d" ] && return 0
+  done
+
+  return 1
+}
+
+setup_storage() {
+  local current_driver
+
+  if [ "$STORAGE_DRIVER" == "" ];then
+    echo "No storage driver specified. Specify one using STORAGE_DRIVER option."
+    exit 0
+  fi
+
+  if ! is_valid_storage_driver $STORAGE_DRIVER;then
+    echo "Invalid storage driver: ${STORAGE_DRIVER}."
+    exit 1
+  fi
+
+  # Set up lvm thin pool LV
+  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+    setup_lvm_thin_pool
+  fi
+}
+
 # Main Script
 if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
   source /usr/lib/docker-storage-setup/docker-storage-setup
@@ -374,5 +406,4 @@ if is_old_data_meta_mode; then
   exit 1
 fi
 
-# Set up lvm thin pool LV
-setup_lvm_thin_pool
+setup_storage
