@@ -445,7 +445,22 @@ setup_storage() {
   fi
 }
 
+usage() {
+  echo "Usage: $1 [OPTIONS]"
+  echo
+  echo "Grows the root filesystem and sets up storage for docker."
+  echo
+  echo "Options:"
+  echo "  -h, --help		Print help message."
+}
+
 # Main Script
+
+if [ $# -gt 0 ]; then
+  usage $0
+  exit 0
+fi
+
 if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
   source /usr/lib/docker-storage-setup/docker-storage-setup
 fi
