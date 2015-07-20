@@ -143,7 +143,7 @@ create_metadata_lv() {
   VG_SIZE=$( vgs --noheadings --nosuffix --units s -o vg_size $VG )
   META_SIZE=$(( $VG_SIZE / 1000 + 1 ))
   if [ ! -n "$META_LV_SIZE" ]; then
-    lvcreate -L ${META_SIZE}s -n $META_LV_NAME $VG
+    lvcreate -y -L ${META_SIZE}s -n $META_LV_NAME $VG
   fi
 }
 
@@ -155,9 +155,9 @@ create_data_lv() {
 
   # TODO: Error handling when DATA_SIZE > available space.
   if [[ $DATA_SIZE == *%* ]]; then
-    lvcreate -l $DATA_SIZE -n $DATA_LV_NAME $VG
+    lvcreate -y -l $DATA_SIZE -n $DATA_LV_NAME $VG
   else
-    lvcreate -L $DATA_SIZE -n $DATA_LV_NAME $VG
+    lvcreate -y -L $DATA_SIZE -n $DATA_LV_NAME $VG
   fi
 }
 
