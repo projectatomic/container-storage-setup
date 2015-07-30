@@ -461,6 +461,11 @@ if [ $# -gt 0 ]; then
   exit 0
 fi
 
+# Source library
+if [ -e /usr/lib/docker-storage-setup/libdss.sh ]; then
+  source /usr/lib/docker-storage-setup/libdss.sh
+fi
+
 if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
   source /usr/lib/docker-storage-setup/docker-storage-setup
 fi

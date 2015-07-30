@@ -11,6 +11,7 @@ Source0:        docker-storage-setup.sh
 Source1:        docker-storage-setup.service
 Source2:        docker-storage-setup.conf
 Source3:        docker-storage-setup-override.conf
+Source4:        libdss.sh
 
 BuildRequires:  pkgconfig(systemd)
 
@@ -36,6 +37,8 @@ install -d %{buildroot}/%{dsslibdir}
 install -p -m 644 %{SOURCE2} %{buildroot}/%{dsslibdir}/docker-storage-setup
 install -d %{buildroot}%{_sysconfdir}/sysconfig/
 install -p -m 644 %{SOURCE3} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage-setup
+install -d %{buildroot}/%{dsslibdir}
+install -p -m 755 %{SOURCE4} %{buildroot}/%{dsslibdir}/libdss.sh
 
 %post
 %systemd_post %{name}.service
@@ -51,6 +54,7 @@ install -p -m 644 %{SOURCE3} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage
 %{_bindir}/docker-storage-setup
 %{dsslibdir}/docker-storage-setup
 %config(noreplace) %{_sysconfdir}/sysconfig/docker-storage-setup
+%{dsslibdir}/libdss.sh
 
 %changelog
 * Thu Oct 16 2014 Andy Grimm <agrimm@redhat.com> - 0.0.1-2
