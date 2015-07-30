@@ -153,6 +153,11 @@ create_data_lv() {
     exit 1
   fi
 
+  if ! check_data_size_syntax $DATA_SIZE; then
+     echo "DATA_SIZE value $DATA_SIZE is invalid."
+     exit 1
+  fi
+
   # TODO: Error handling when DATA_SIZE > available space.
   if [[ $DATA_SIZE == *%* ]]; then
     lvcreate -y -l $DATA_SIZE -n $DATA_LV_NAME $VG
