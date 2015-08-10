@@ -21,3 +21,15 @@ check_data_size_syntax() {
 
   return 1
 }
+
+check_min_data_size_syntax() {
+  local min_data_size=$1
+
+  # if it is all numeric, it is valid as by default it will be MB.
+  [[ $min_data_size =~ ^[[:digit:]]+$ ]] && return 0
+
+  # Numberic digits followed by valid suffix.
+  [[ $min_data_size =~ ^[[:digit:]]+[bBsSkKmMgGtTpPeE]$ ]] && return 0
+
+  return 1
+}

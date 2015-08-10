@@ -147,6 +147,102 @@ create_metadata_lv() {
   fi
 }
 
+convert_size_in_bytes() {
+  local size=$1 prefix
+
+  # if it is all numeric, it is valid as by default it will be MiB.
+  if [[ $size =~ ^[[:digit:]]+$ ]]; then
+    echo $(($size*1024*1024))
+    return 0
+  fi
+
+  prefix=${size%[bBsSkKmMgGtTpPeE]}
+
+  case $size in
+    *b|*B) echo $prefix;;
+    *s|*S) echo $(($prefix*512));;
+    *k|*K) echo $(($prefix*2**10));;
+    *m|*M) echo $(($prefix*2**20));;
+    *g|*G) echo $(($prefix*2**30));;
+    *t|*T) echo $(($prefix*2**40));;
+    *p|*P) echo $(($prefix*2**50));;
+    *e|*E) echo $(($prefix*2**60));;
+    *) return 1;;
+  esac
+}
+
+data_size_in_bytes() {
+  local data_size=$1
+  local bytes vg_size free_space percent
+
+  # -L compatible syntax
+  if [[ $DATA_SIZE != *%* ]]; then
+    bytes=`convert_size_in_bytes $data_size`
+    [ $? -ne 0 ] && return 1
+    # If integer overflow took place, value is too large to handle.
+    if [ $bytes -lt 0 ];then
+      echo "DATA_SIZE=$data_size is too large to handle." 1>&2
+      return 1
+    fi
+    echo $bytes
+    return 0
+  fi
+
+  if [[ $DATA_SIZE == *%FREE ]];then
+    free_space=$(vgs --noheadings --nosuffix --units b -o vg_free $VG)
+    percent=${DATA_SIZE%\%FREE}
+    echo $((percent*free_space/100))
+    return 0
+  fi
+
+  if [[ $DATA_SIZE == *%VG ]];then
+    vg_size=$(vgs --noheadings --nosuffix --units b -o vg_size $VG)
+    percent=${DATA_SIZE%\%VG}
+    echo $((percent*vg_size/100))
+  fi
+  return 0
+}
+
+check_min_data_size_condition() {
+  local min_data_size_bytes data_size_bytes free_space
+
+  [ -z $MIN_DATA_SIZE ] && return 0
+
+  if ! check_min_data_size_syntax $MIN_DATA_SIZE; then
+    echo "MIN_DATA_SIZE value $MIN_DATA_SIZE is invalid."
+    exit 1
+  fi
+
+  if ! min_data_size_bytes=$(convert_size_in_bytes $MIN_DATA_SIZE);then
+    echo "Failed to convert MIN_DATA_SIZE to bytes"
+    exit 1
+  fi
+
+  # If integer overflow took place, value is too large to handle.
+  if [ $min_data_size_bytes -lt 0 ];then
+    echo "MIN_DATA_SIZE=$MIN_DATA_SIZE is too large to handle."
+    exit 1
+  fi
+
+  free_space=$(vgs --noheadings --nosuffix --units b -o vg_free $VG)
+
+  if [ $free_space -lt $min_data_size_bytes ];then
+    echo "There is not enough free space in volume group $VG to create data volume of size MIN_DATA_SIZE=${MIN_DATA_SIZE}."
+    exit 1
+  fi
+
+  if ! data_size_bytes=$(data_size_in_bytes $DATA_SIZE);then
+    echo "Failed to convert desired data size to bytes"
+    exit 1
+  fi
+
+  if [ $data_size_bytes -lt $min_data_size_bytes ]; then
+    # Increasing DATA_SIZE to meet minimum data size requirements.
+    echo "DATA_SIZE=${DATA_SIZE} is smaller than MIN_DATA_SIZE=${MIN_DATA_SIZE}. Will create data volume of size specified by MIN_DATA_SIZE."
+    DATA_SIZE=$MIN_DATA_SIZE
+  fi
+}
+
 create_data_lv() {
   if [ ! -n "$DATA_SIZE" ]; then
     echo "Data volume creation failed. No DATA_SIZE specified"
@@ -157,6 +253,8 @@ create_data_lv() {
      echo "DATA_SIZE value $DATA_SIZE is invalid."
      exit 1
   fi
+
+  check_min_data_size_condition
 
   # TODO: Error handling when DATA_SIZE > available space.
   if [[ $DATA_SIZE == *%* ]]; then
