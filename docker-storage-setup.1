@@ -84,6 +84,19 @@ DATA_SIZE: The desired size for the docker data LV.  Defaults to using
            acceptable.  If value does not contain "%" it is assumed
            value is suitable for "lvcreate -L".
 
+MIN_DATA_SIZE:
+           Specifies the minimum size of the data volume. If sufficient
+           free space is not available, the pool creation will fail.
+
+           Value should be a number followed by a optional suffix.
+           "bBsSkKmMgGtTpPeE" are valid suffixes. If no suffix is
+           specified then value will be considered as megabyte unit.
+
+           Both upper and lower case suffix represent same unit of
+           size. Use suffix B for Bytes, S for sectors as 512 bytes, K
+           for kibibytes (1024 bytes), M for mebibytes
+           (1024 kibibytes), G for gibibytes, T for tebibytes, P for
+           pebibytes and E for exbibytes.
 
 \f[B]Sample\f[]
 
