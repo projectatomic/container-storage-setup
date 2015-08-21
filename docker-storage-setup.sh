@@ -148,7 +148,7 @@ create_metadata_lv() {
 }
 
 convert_size_in_bytes() {
-  local size=$1 prefix
+  local size=$1 prefix suffix
 
   # if it is all numeric, it is valid as by default it will be MiB.
   if [[ $size =~ ^[[:digit:]]+$ ]]; then
@@ -156,17 +156,27 @@ convert_size_in_bytes() {
     return 0
   fi
 
-  prefix=${size%[bBsSkKmMgGtTpPeE]}
+  # supprt G, G[bB] or Gi[bB] inputs.
+  prefix=${size%[bBsSkKmMgGtTpPeE]i[bB]}
+  prefix=${prefix%[bBsSkKmMgGtTpPeE][bB]}
+  prefix=${prefix%[bBsSkKmMgGtTpPeE]}
 
-  case $size in
-    *b|*B) echo $prefix;;
-    *s|*S) echo $(($prefix*512));;
-    *k|*K) echo $(($prefix*2**10));;
-    *m|*M) echo $(($prefix*2**20));;
-    *g|*G) echo $(($prefix*2**30));;
-    *t|*T) echo $(($prefix*2**40));;
-    *p|*P) echo $(($prefix*2**50));;
-    *e|*E) echo $(($prefix*2**60));;
+  # if prefix is not all numeric now, it is an error.
+  if ! [[ $prefix =~ ^[[:digit:]]+$ ]]; then
+    return 1
+  fi
+
+  suffix=${data_size#$prefix}
+
+  case $suffix in
+    b*|B*) echo $prefix;;
+    s*|S*) echo $(($prefix*512));;
+    k*|K*) echo $(($prefix*2**10));;
+    m*|M*) echo $(($prefix*2**20));;
+    g*|G*) echo $(($prefix*2**30));;
+    t*|T*) echo $(($prefix*2**40));;
+    p*|P*) echo $(($prefix*2**50));;
+    e*|E*) echo $(($prefix*2**60));;
     *) return 1;;
   esac
 }
@@ -208,7 +218,7 @@ check_min_data_size_condition() {
 
   [ -z $MIN_DATA_SIZE ] && return 0
 
-  if ! check_min_data_size_syntax $MIN_DATA_SIZE; then
+  if ! check_numeric_size_syntax $MIN_DATA_SIZE; then
     echo "MIN_DATA_SIZE value $MIN_DATA_SIZE is invalid."
     exit 1
   fi
