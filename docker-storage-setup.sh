@@ -591,11 +591,24 @@ fi
 
 # Read mounts
 ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
-ROOT_VG=$( lvs --noheadings -o vg_name $ROOT_DEV | sed -e 's/^ *//' -e 's/ *$//')
+if ! ROOT_VG=$(lvs --noheadings -o vg_name $ROOT_DEV);then
+  ROOT_VG=
+else
+  ROOT_VG=$(echo $ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
+fi
+
 ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$ROOT_VG\$/ { print \$1 }" )
 
 VG_EXISTS=
 if [ -z "$VG" ]; then
+  # At this point of time, either user should pass in a volume group name
+  # which either exists or can be created. Or there needs to be a valid root
+  # device volume group on which this script can operate. If none of that
+  # happens, we can't make progress. Error out.
+  if [ -z "$ROOT_VG" ]; then
+    echo "No volume group has been specified and root device volume group could not be determined. Exiting."
+    exit 1
+  fi
   VG=$ROOT_VG
   VG_EXISTS=1
 else
