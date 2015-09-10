@@ -344,10 +344,13 @@ is_old_data_meta_mode() {
 }
 
 grow_root_pvs() {
-  [ -x "/usr/bin/growpart" ] || return 0
-
   # Grow root pvs only if user asked for it through config file.
   [ "$GROWPART" != "true" ] && return
+
+  if [ ! -x "/usr/bin/growpart" ];then
+    echo "GROWPART=true is specified and /usr/bin/growpart executable is not available. Install /usr/bin/growpart and try again."
+    return 1
+  fi
 
   # Note that growpart is only variable here because we may someday support
   # using separate partitions on the same disk.  Today we fail early in that
