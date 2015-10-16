@@ -83,7 +83,7 @@ get_deferred_removal_string() {
 	[ -z "$minor" ] && return 0
 
 	# docker 1.7 onwards supports deferred device removal. Enable it.
-	if [ "$major" -ge "1" ] && [ "$minor" -ge "7" ];then
+	if [ $major -gt 1 ] ||  ([ $major -eq 1 ] && [ $minor -ge 7 ]);then
 		echo "--storage-opt dm.use_deferred_removal=true"
 	fi
 }
