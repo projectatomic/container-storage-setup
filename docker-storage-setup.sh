@@ -61,12 +61,12 @@ DOCKER_STORAGE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay"
 
 get_docker_version() {
-	local version
+  local version
 
-	if ! version=$(docker version 2>/dev/null | grep "Client version" | cut -d ":" -f2 | sed 's/^ *//');then
-		return 1
-	fi
-	echo $version
+  # docker version command exits with error as daemon is not running at this
+  # point of time. So continue despite the error.
+  version=`docker version --format='{{.Client.Version}}' 2>/dev/null` || true
+  echo $version
 }
 
 get_deferred_removal_string() {
