@@ -61,12 +61,12 @@ DOCKER_STORAGE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay"
 
 get_docker_version() {
-	local version
+  local version
 
-	if ! version=$(docker version 2>/dev/null | grep "Client version" | cut -d ":" -f2 | sed 's/^ *//');then
-		return 1
-	fi
-	echo $version
+  # docker version command exits with error as daemon is not running at this
+  # point of time. So continue despite the error.
+  version=`docker version --format='{{.Client.Version}}' 2>/dev/null` || true
+  echo $version
 }
 
 get_deferred_removal_string() {
@@ -88,6 +88,25 @@ get_deferred_removal_string() {
 	fi
 }
 
+get_deferred_deletion_string() {
+	local version major minor
+
+	if ! version=$(get_docker_version);then
+		return 0
+	fi
+	[ -z "$version" ] && return 0
+
+	major=$(echo $version | cut -d "." -f1)
+	minor=$(echo $version | cut -d "." -f2)
+	[ -z "$major" ] && return 0
+	[ -z "$minor" ] && return 0
+
+	# docker 1.9 onwards supports deferred device removal. Enable it.
+	if [ $major -gt 1 ] || ([ $major -eq 1 ] && [ $minor -ge 9 ]);then
+		echo "--storage-opt dm.use_deferred_deletion=true"
+	fi
+}
+
 get_devicemapper_config_options() {
   local storage_options
 
@@ -99,7 +118,7 @@ get_devicemapper_config_options() {
     fi
     done )
 
-  storage_options="DOCKER_STORAGE_OPTIONS=--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string)"
+    storage_options="DOCKER_STORAGE_OPTIONS=--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string)"
   echo $storage_options
 }
 
