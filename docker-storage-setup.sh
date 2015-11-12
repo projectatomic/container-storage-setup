@@ -291,6 +291,13 @@ create_lvm_thin_pool () {
 }
 
 setup_lvm_thin_pool () {
+  # At this point of time, a volume group should exist for lvm thin pool
+  # operations to succeed. Make that check and fail if that's not the case.
+  if [ -z "$VG_EXISTS" ]; then
+    echo "No valid volume group found. Exiting."
+    exit 1
+  fi
+
   if ! lvm_pool_exists; then
     create_lvm_thin_pool
     write_storage_config_file
@@ -344,6 +351,10 @@ is_old_data_meta_mode() {
 }
 
 grow_root_pvs() {
+  # If root is not in a volume group, then there are no root pvs and nothing
+  # to do.
+  [ -z "$ROOT_PVS" ] && return 0
+
   # Grow root pvs only if user asked for it through config file.
   [ "$GROWPART" != "true" ] && return
 
@@ -608,16 +619,10 @@ fi
 
 VG_EXISTS=
 if [ -z "$VG" ]; then
-  # At this point of time, either user should pass in a volume group name
-  # which either exists or can be created. Or there needs to be a valid root
-  # device volume group on which this script can operate. If none of that
-  # happens, we can't make progress. Error out.
-  if [ -z "$ROOT_VG" ]; then
-    echo "No volume group has been specified and root device volume group could not be determined. Exiting."
-    exit 1
+  if [ -n "$ROOT_VG" ]; then
+    VG=$ROOT_VG
+    VG_EXISTS=1
   fi
-  VG=$ROOT_VG
-  VG_EXISTS=1
 else
   for vg_name in $( vgs --noheadings -o vg_name ); do
     if [ "$vg_name" == "$VG" ]; then
@@ -627,7 +632,9 @@ else
   done
 fi
 
-if [ -n "$DEVS" ] ; then
+# If there is no volume group specified or no root volume group, there is
+# nothing to do in terms of dealing with disks.
+if [ -n "$DEVS" ] && [ -n "$VG" ]; then
   create_disk_partitions
   create_extend_volume_group
 fi
@@ -636,7 +643,8 @@ grow_root_pvs
 
 # NB: We are growing root here first, because when root and docker share a
 # disk, we'll default to giving some portion of remaining space to docker.
-grow_root_lv_fs
+# Do this operation only if root is on a logical volume.
+[ -n "$ROOT_VG" ] && grow_root_lv_fs
 
 if is_old_data_meta_mode; then
   echo "ERROR: Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
