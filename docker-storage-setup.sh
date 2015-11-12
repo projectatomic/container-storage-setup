@@ -594,7 +594,8 @@ fi
 
 # Read mounts
 ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
-if ! ROOT_VG=$(lvs --noheadings -o vg_name $ROOT_DEV);then
+if ! ROOT_VG=$(lvs --noheadings -o vg_name $ROOT_DEV 2>/dev/null);then
+  echo "INFO: Volume group backing root filesystem could not be determined"
   ROOT_VG=
 else
   ROOT_VG=$(echo $ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
