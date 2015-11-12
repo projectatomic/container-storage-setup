@@ -601,7 +601,10 @@ else
   ROOT_VG=$(echo $ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
 fi
 
-ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$ROOT_VG\$/ { print \$1 }" )
+ROOT_PVS=
+if [ -n "$ROOT_VG" ];then
+  ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$ROOT_VG\$/ { print \$1 }" )
+fi
 
 VG_EXISTS=
 if [ -z "$VG" ]; then
