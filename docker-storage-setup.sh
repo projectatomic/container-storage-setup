@@ -435,6 +435,7 @@ EOF
 create_extend_volume_group() {
   if [ -z "$VG_EXISTS" ]; then
     vgcreate $VG $PVS
+    VG_EXISTS=1
   else
     # TODO:
     #   * Error handling when PV is already part of a VG
