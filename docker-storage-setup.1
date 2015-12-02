@@ -11,7 +11,7 @@ docker\-storage\-setup - Grows the root filesystem and sets up storage for docke
   Print usage statement
 
 .SH EXAMPLES
-Run \f[B]docker-storage-setup\f[] after setting up your configuration in 
+Run \f[B]docker-storage-setup\f[] after setting up your configuration in
 /etc/sysconfig/docker-storage-setup. One can look at
 /usr/lib/docker-storage-setup/docker-storage-setup for various options and
 their default settings. Anything user wants to change, should be changed
@@ -25,13 +25,15 @@ functionality to work properly.
 
 STORAGE_DRIVER:
       Specify a storage driver to be used with docker. Default
-      driver is devicemapper. Other valid values are "overlay"
+      driver is "devicemapper". Other valid values are "overlay"
       and "". Empty string tells docker-storage-setup to not do
       any storage setup.
 
-DEVS: A quoted, space-separated list of devices to be used.  This
-      currently expects the devices to be unpartitioned drives.  If
-      "VG" is not specified, then use of the root disk's extra space
+DEVS: A quoted, space-separated list of devices to be used.
+      If a drive is partitioned and contains a ${dev}1 partition,
+      that partition will be configured for use. Unpartitioned
+      drives will be partitioned and configured for use. If "VG"
+      is not specified, then use of the root disk's extra space
       is implied.
 
 VG:   The volume group to use for docker storage.  Defaults to the
@@ -100,18 +102,18 @@ MIN_DATA_SIZE:
 
 \f[B]Sample\f[]
 
-A simple, sample /etc/sysconfig/docker-storage-setup: 
+A simple, sample /etc/sysconfig/docker-storage-setup:
 
 DEVS=/dev/vdb
 
 DATA_SIZE=8GB
 
-.fi 
+.fi
 
-.SH HISTORY 
+.SH HISTORY
 
-.PP 
-November 2014, originally compiled by Joe Brockmeier <jzb@redhat.com> 
+.PP
+November 2014, originally compiled by Joe Brockmeier <jzb@redhat.com>
 based on comments in Andy Grimm's <agrimm@redhat.com> script.
 .SH AUTHORS
 Joe Brockmeier
