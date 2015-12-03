@@ -71,41 +71,41 @@ get_docker_version() {
 }
 
 get_deferred_removal_string() {
-	local version major minor
+  local version major minor
 
-	if ! version=$(get_docker_version);then
-		return 0
-	fi
-	[ -z "$version" ] && return 0
+  if ! version=$(get_docker_version);then
+    return 0
+  fi
+  [ -z "$version" ] && return 0
 
-	major=$(echo $version | cut -d "." -f1)
-	minor=$(echo $version | cut -d "." -f2)
-	[ -z "$major" ] && return 0
-	[ -z "$minor" ] && return 0
+  major=$(echo $version | cut -d "." -f1)
+  minor=$(echo $version | cut -d "." -f2)
+  [ -z "$major" ] && return 0
+  [ -z "$minor" ] && return 0
 
-	# docker 1.7 onwards supports deferred device removal. Enable it.
-	if [ $major -gt 1 ] ||  ([ $major -eq 1 ] && [ $minor -ge 7 ]);then
-		echo "--storage-opt dm.use_deferred_removal=true"
-	fi
+  # docker 1.7 onwards supports deferred device removal. Enable it.
+  if [ $major -gt 1 ] ||  ([ $major -eq 1 ] && [ $minor -ge 7 ]);then
+    echo "--storage-opt dm.use_deferred_removal=true"
+  fi
 }
 
 get_deferred_deletion_string() {
-	local version major minor
+  local version major minor
 
-	if ! version=$(get_docker_version);then
-		return 0
-	fi
-	[ -z "$version" ] && return 0
+  if ! version=$(get_docker_version);then
+    return 0
+  fi
+  [ -z "$version" ] && return 0
 
-	major=$(echo $version | cut -d "." -f1)
-	minor=$(echo $version | cut -d "." -f2)
-	[ -z "$major" ] && return 0
-	[ -z "$minor" ] && return 0
+  major=$(echo $version | cut -d "." -f1)
+  minor=$(echo $version | cut -d "." -f2)
+  [ -z "$major" ] && return 0
+  [ -z "$minor" ] && return 0
 
-	# docker 1.9 onwards supports deferred device removal. Enable it.
-	if [ $major -gt 1 ] || ([ $major -eq 1 ] && [ $minor -ge 9 ]);then
-		echo "--storage-opt dm.use_deferred_deletion=true"
-	fi
+  # docker 1.9 onwards supports deferred device removal. Enable it.
+  if [ $major -gt 1 ] || ([ $major -eq 1 ] && [ $minor -ge 9 ]);then
+    echo "--storage-opt dm.use_deferred_deletion=true"
+  fi
 }
 
 get_devicemapper_config_options() {
@@ -117,9 +117,9 @@ get_devicemapper_config_options() {
     if [ "$LVM2_LV_NAME" = "$DATA_LV_NAME" ]; then
       echo POOL_DEVICE_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
     fi
-    done )
+  done )
 
-    storage_options="DOCKER_STORAGE_OPTIONS=--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string)"
+  storage_options="DOCKER_STORAGE_OPTIONS=--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string)"
   echo $storage_options
 }
 
@@ -140,9 +140,10 @@ write_storage_config_file () {
     fi
   fi
 
-cat <<EOF > $DOCKER_STORAGE.tmp
+  cat <<EOF > $DOCKER_STORAGE.tmp
 $storage_options
 EOF
+
   mv $DOCKER_STORAGE.tmp $DOCKER_STORAGE
 }
 
@@ -153,8 +154,8 @@ create_metadata_lv() {
   # later. Don't exit with error leaving partially created lvs behind.
 
   if lvs -a $VG/${META_LV_NAME} --noheadings &>/dev/null; then
-        echo "INFO: Metadata volume $META_LV_NAME already exists. Not creating a new one." >&2
-	return 0
+    echo "INFO: Metadata volume $META_LV_NAME already exists. Not creating a new one." >&2
+    return 0
   fi
 
   # Reserve 0.1% of the free space in the VG for docker metadata.
@@ -280,8 +281,8 @@ create_data_lv() {
   fi
 
   if ! check_data_size_syntax $DATA_SIZE; then
-     echo "ERROR: DATA_SIZE value $DATA_SIZE is invalid." >&2
-     exit 1
+    echo "ERROR: DATA_SIZE value $DATA_SIZE is invalid." >&2
+    exit 1
   fi
 
   check_min_data_size_condition
@@ -346,8 +347,8 @@ lvm_pool_exists() {
   read lvname lvattr <<< "$lv"
     # pool logical volume has "t" as first character in its attributes
     if [ "$lvname" == "$POOL_LV_NAME" ] && [[ $lvattr == t* ]]; then
-            IFS=$SAVEDIFS
-	    return 0
+      IFS=$SAVEDIFS
+      return 0
     fi
   done
   IFS=$SAVEDIFS
@@ -504,7 +505,7 @@ enable_auto_pool_extension() {
     return 1
   fi
 
-cat <<EOF > $tmpFile
+  cat <<EOF > $tmpFile
 activation {
 	thin_pool_autoextend_threshold=${POOL_AUTOEXTEND_THRESHOLD}
 	thin_pool_autoextend_percent=${POOL_AUTOEXTEND_PERCENT}
@@ -637,7 +638,7 @@ usage() {
     Grows the root filesystem and sets up storage for docker
 
     Options:
-      -h, --help		Print help message
+      -h, --help    Print help message
 FOE
 }
 
