@@ -119,12 +119,12 @@ get_devicemapper_config_options() {
     fi
   done )
 
-  storage_options="DOCKER_STORAGE_OPTIONS=--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string)"
+  storage_options="DOCKER_STORAGE_OPTIONS=\"--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string)\""
   echo $storage_options
 }
 
 get_overlay_config_options() {
-  echo "DOCKER_STORAGE_OPTIONS=--storage-driver overlay"
+  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay\""
 }
 
 write_storage_config_file () {
@@ -534,7 +534,7 @@ disable_auto_pool_extension() {
 # Gets the current DOCKER_STORAGE_OPTIONS= string.
 get_docker_storage_options() {
   local options
-  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" $DOCKER_STORAGE | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//');then
+  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" $DOCKER_STORAGE | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
     echo $options
     return 0
   fi
