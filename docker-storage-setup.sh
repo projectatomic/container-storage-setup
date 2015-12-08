@@ -426,7 +426,7 @@ scan_disk_partitions() {
 
   #validate DEVS elements
   for dev in $DEVS; do
-    if [[ $dev =~ ".*[0-9]$" ]]; then
+    if [[ $dev =~ .*[0-9]$ ]]; then
       echo "ERROR: Partition specification unsupported at this time." >&2
       exit 1
     fi
