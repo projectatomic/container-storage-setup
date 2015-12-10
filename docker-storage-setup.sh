@@ -434,7 +434,7 @@ scan_disk_partitions() {
     local basename=$(basename $dev)
     local p=$(awk "\$4 ~ /${basename}./ {print \$4}" /proc/partitions)
     if [[ -z "$p" ]]; then
-      needs_partitioned="$dev $need_partitioned"
+      needs_partitioned="$dev $needs_partitioned"
     else
       if is_dev_part_of_vg ${dev}1 $VG; then
         echo "INFO: Device ${dev} is already partitioned and is part of volume group $VG" >&2
