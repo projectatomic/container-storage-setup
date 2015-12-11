@@ -411,15 +411,27 @@ is_dev_part_of_vg() {
  return 1
 }
 
+# Make sure passed in devices are valid block devies. Also make sure they
+# are not partitions.
+check_block_devs() {
+  local devs=$1
+
+  for dev in ${devs}; do
+    if [ ! -b "$dev" ];then
+      Fatal "$dev is not a valid block device."
+    fi
+
+    if [[ $dev =~ .*[0-9]$ ]]; then
+      Fatal "Partition specification unsupported at this time."
+    fi
+  done
+}
+
 scan_disk_partitions() {
   local needs_partitioned=''
 
   #validate DEVS elements
   for dev in $DEVS; do
-    if [[ $dev =~ .*[0-9]$ ]]; then
-      Fatal "Partition specification unsupported at this time."
-    fi
-
     local basename=$(basename $dev)
     local p=$(awk "\$4 ~ /${basename}./ {print \$4}" /proc/partitions)
     if [[ -z "$p" ]]; then
@@ -687,6 +699,7 @@ fi
 # If there is no volume group specified or no root volume group, there is
 # nothing to do in terms of dealing with disks.
 if [[ -n "$DEVS" && -n "$VG" ]]; then
+  check_block_devs ${DEVS}
 
   # If all the disks have already been correctly partitioned, there is
   # nothing more to do
