@@ -649,8 +649,14 @@ if [ $# -gt 0 ]; then
   exit 0
 fi
 
-# Source library
-if [ -e /usr/lib/docker-storage-setup/libdss.sh ]; then
+# Source library. If there is a library present in same dir as d-s-s, source
+# that otherwise fall back to standard library. This is useful when modifyin
+# libdss.sh in git tree and testing d-s-s.
+SRCDIR=`dirname $0`
+
+if [ -e $SRCDIR/libdss.sh ]; then
+  source $SRCDIR/libdss.sh
+elif [ -e /usr/lib/docker-storage-setup/libdss.sh ]; then
   source /usr/lib/docker-storage-setup/libdss.sh
 fi
 
