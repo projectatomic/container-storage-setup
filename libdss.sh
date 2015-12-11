@@ -1,6 +1,22 @@
 #!/bin/bash
 # Library for common functions
 
+# echo info messages on stdout
+Info() {
+  echo "INFO: ${1}"
+}
+
+# echo error messages on stderr
+Error() {
+  echo "ERROR: ${1}" >&2
+}
+
+# echo error on stderr and exit with error code 1
+Fatal() {
+  Error "${1}"
+  exit 1
+}
+
 # checks the size specifications acceptable to -L
 check_numeric_size_syntax() {
   data_size=$1
