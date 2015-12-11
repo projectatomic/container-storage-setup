@@ -154,7 +154,7 @@ create_metadata_lv() {
   # later. Don't exit with error leaving partially created lvs behind.
 
   if lvs -a $VG/${META_LV_NAME} --noheadings &>/dev/null; then
-    echo "INFO: Metadata volume $META_LV_NAME already exists. Not creating a new one." >&2
+    Info "Metadata volume $META_LV_NAME already exists. Not creating a new one."
     return 0
   fi
 
@@ -212,7 +212,7 @@ data_size_in_bytes() {
     [ $? -ne 0 ] && return 1
     # If integer overflow took place, value is too large to handle.
     if [ $bytes -lt 0 ];then
-      echo "ERROR: DATA_SIZE=$data_size is too large to handle." >&2
+      Error "DATA_SIZE=$data_size is too large to handle."
       return 1
     fi
     echo $bytes
@@ -240,49 +240,42 @@ check_min_data_size_condition() {
   [ -z $MIN_DATA_SIZE ] && return 0
 
   if ! check_numeric_size_syntax $MIN_DATA_SIZE; then
-    echo "ERROR: MIN_DATA_SIZE value $MIN_DATA_SIZE is invalid." >&2
-    exit 1
+    Fatal "MIN_DATA_SIZE value $MIN_DATA_SIZE is invalid."
   fi
 
   if ! min_data_size_bytes=$(convert_size_in_bytes $MIN_DATA_SIZE);then
-    echo "ERROR: Failed to convert MIN_DATA_SIZE to bytes" >&2
-    exit 1
+    Fatal "Failed to convert MIN_DATA_SIZE to bytes"
   fi
 
   # If integer overflow took place, value is too large to handle.
   if [ $min_data_size_bytes -lt 0 ];then
-    echo "ERROR: MIN_DATA_SIZE=$MIN_DATA_SIZE is too large to handle." >&2
-    exit 1
+    Fatal "MIN_DATA_SIZE=$MIN_DATA_SIZE is too large to handle."
   fi
 
   free_space=$(vgs --noheadings --nosuffix --units b -o vg_free $VG)
 
   if [ $free_space -lt $min_data_size_bytes ];then
-    echo "ERROR: There is not enough free space in volume group $VG to create data volume of size MIN_DATA_SIZE=${MIN_DATA_SIZE}." >&2
-    exit 1
+    Fatal "There is not enough free space in volume group $VG to create data volume of size MIN_DATA_SIZE=${MIN_DATA_SIZE}."
   fi
 
   if ! data_size_bytes=$(data_size_in_bytes $DATA_SIZE);then
-    echo "ERROR: Failed to convert desired data size to bytes" >&2
-    exit 1
+    Fatal "Failed to convert desired data size to bytes"
   fi
 
   if [ $data_size_bytes -lt $min_data_size_bytes ]; then
     # Increasing DATA_SIZE to meet minimum data size requirements.
-    echo "INFO: DATA_SIZE=${DATA_SIZE} is smaller than MIN_DATA_SIZE=${MIN_DATA_SIZE}. Will create data volume of size specified by MIN_DATA_SIZE." >&2
+    Info "DATA_SIZE=${DATA_SIZE} is smaller than MIN_DATA_SIZE=${MIN_DATA_SIZE}. Will create data volume of size specified by MIN_DATA_SIZE."
     DATA_SIZE=$MIN_DATA_SIZE
   fi
 }
 
 create_data_lv() {
   if [ ! -n "$DATA_SIZE" ]; then
-    echo "ERROR: Data volume creation failed. No DATA_SIZE specified" >&2
-    exit 1
+    Fatal "Data volume creation failed. No DATA_SIZE specified"
   fi
 
   if ! check_data_size_syntax $DATA_SIZE; then
-    echo "ERROR: DATA_SIZE value $DATA_SIZE is invalid." >&2
-    exit 1
+    Fatal "DATA_SIZE value $DATA_SIZE is invalid."
   fi
 
   check_min_data_size_condition
@@ -297,8 +290,7 @@ create_data_lv() {
 
 create_lvm_thin_pool () {
   if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
-    echo "ERROR: Specified volume group $VG does not exist, and no devices were specified" >&2
-    exit 1
+    Fatal "Specified volume group $VG does not exist, and no devices were specified"
   fi
 
   # First create metadata lv. Down the line let lvm2 create it automatically.
@@ -315,8 +307,7 @@ setup_lvm_thin_pool () {
   # At this point of time, a volume group should exist for lvm thin pool
   # operations to succeed. Make that check and fail if that's not the case.
   if [ -z "$VG_EXISTS" ]; then
-    echo "ERROR: No valid volume group found. Exiting." >&2
-    exit 1
+    Fatal "No valid volume group found. Exiting."
   fi
 
   if ! lvm_pool_exists; then
@@ -380,7 +371,7 @@ grow_root_pvs() {
   [ "$GROWPART" != "true" ] && return
 
   if [ ! -x "/usr/bin/growpart" ];then
-    echo "ERROR: GROWPART=true is specified and /usr/bin/growpart executable is not available. Install /usr/bin/growpart and try again." >&2
+    Error "GROWPART=true is specified and /usr/bin/growpart executable is not available. Install /usr/bin/growpart and try again."
     return 1
   fi
 
@@ -411,8 +402,7 @@ is_dev_part_of_vg() {
   local vg=$2
 
   if ! pv_name=$(pvs --noheadings -o pv_name -S pv_name=$dev,vg_name=$vg); then
-    echo "ERROR: Error running command pvs. Exiting." >&2
-    exit 1
+    Fatal "Error running command pvs. Exiting."
   fi
 
  [ -z "$pv_name" ] && return 1
@@ -421,26 +411,36 @@ is_dev_part_of_vg() {
  return 1
 }
 
+# Make sure passed in devices are valid block devies. Also make sure they
+# are not partitions.
+check_block_devs() {
+  local devs=$1
+
+  for dev in ${devs}; do
+    if [ ! -b "$dev" ];then
+      Fatal "$dev is not a valid block device."
+    fi
+
+    if [[ $dev =~ .*[0-9]$ ]]; then
+      Fatal "Partition specification unsupported at this time."
+    fi
+  done
+}
+
 scan_disk_partitions() {
   local needs_partitioned=''
 
   #validate DEVS elements
   for dev in $DEVS; do
-    if [[ $dev =~ .*[0-9]$ ]]; then
-      echo "ERROR: Partition specification unsupported at this time." >&2
-      exit 1
-    fi
-
     local basename=$(basename $dev)
     local p=$(awk "\$4 ~ /${basename}./ {print \$4}" /proc/partitions)
     if [[ -z "$p" ]]; then
       needs_partitioned="$dev $needs_partitioned"
     else
       if is_dev_part_of_vg ${dev}1 $VG; then
-        echo "INFO: Device ${dev} is already partitioned and is part of volume group $VG" >&2
+        Info "Device ${dev} is already partitioned and is part of volume group $VG"
       else
-        echo "ERROR: Device $dev is already partitioned and cannot be added to volume group $VG" >&2
-        exit 1
+        Fatal "Device $dev is already partitioned and cannot be added to volume group $VG"
       fi
     fi
   done
@@ -496,12 +496,12 @@ enable_auto_pool_extension() {
   [ -n "$profileDir" ] || return 1
 
   if [ ! -n "$POOL_AUTOEXTEND_THRESHOLD" ];then
-    echo "ERROR: POOL_AUTOEXTEND_THRESHOLD not specified" >&2
+    Error "POOL_AUTOEXTEND_THRESHOLD not specified"
     return 1
   fi
 
   if [ ! -n "$POOL_AUTOEXTEND_PERCENT" ];then
-    echo "ERROR: POOL_AUTOEXTEND_PERCENT not specified" >&2
+    Error "POOL_AUTOEXTEND_PERCENT not specified"
     return 1
   fi
 
@@ -603,24 +603,21 @@ setup_storage() {
   local current_driver
 
   if [ "$STORAGE_DRIVER" == "" ];then
-    echo "INFO: No storage driver specified. Specify one using STORAGE_DRIVER option." >&2
+    Info "No storage driver specified. Specify one using STORAGE_DRIVER option."
     exit 0
   fi
 
   if ! is_valid_storage_driver $STORAGE_DRIVER;then
-    echo "ERROR: Invalid storage driver: ${STORAGE_DRIVER}." >&2
-    exit 1
+    Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
   fi
 
   if ! current_driver=$(get_existing_storage_driver);then
-    echo "ERROR: Failed to determine existing storage driver." >&2
-    exit 1
+    Fatal "Failed to determine existing storage driver."
   fi
 
   # If storage is configured and new driver should match old one.
   if [ -n "$current_driver" ] && [ "$current_driver" != "$STORAGE_DRIVER" ];then
-   echo "ERROR: Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove $DOCKER_STORAGE and retry." >&2
-   exit 1
+   Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove $DOCKER_STORAGE and retry."
   fi
 
   # Set up lvm thin pool LV
@@ -649,8 +646,14 @@ if [ $# -gt 0 ]; then
   exit 0
 fi
 
-# Source library
-if [ -e /usr/lib/docker-storage-setup/libdss.sh ]; then
+# Source library. If there is a library present in same dir as d-s-s, source
+# that otherwise fall back to standard library. This is useful when modifyin
+# libdss.sh in git tree and testing d-s-s.
+SRCDIR=`dirname $0`
+
+if [ -e $SRCDIR/libdss.sh ]; then
+  source $SRCDIR/libdss.sh
+elif [ -e /usr/lib/docker-storage-setup/libdss.sh ]; then
   source /usr/lib/docker-storage-setup/libdss.sh
 fi
 
@@ -667,7 +670,7 @@ fi
 # Read mounts
 ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
 if ! ROOT_VG=$(lvs --noheadings -o vg_name $ROOT_DEV 2>/dev/null);then
-  echo "INFO: Volume group backing root filesystem could not be determined" >&2
+  Info "Volume group backing root filesystem could not be determined"
   ROOT_VG=
 else
   ROOT_VG=$(echo $ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
@@ -696,6 +699,7 @@ fi
 # If there is no volume group specified or no root volume group, there is
 # nothing to do in terms of dealing with disks.
 if [[ -n "$DEVS" && -n "$VG" ]]; then
+  check_block_devs ${DEVS}
 
   # If all the disks have already been correctly partitioned, there is
   # nothing more to do
@@ -714,8 +718,7 @@ grow_root_pvs
 [ -n "$ROOT_VG" ] && grow_root_lv_fs
 
 if is_old_data_meta_mode; then
-  echo "ERROR: Old mode of passing data and metadata logical volumes to docker is not supported. Exiting." >&2
-  exit 1
+  Fatal "Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
 fi
 
 setup_storage
