@@ -417,7 +417,9 @@ check_block_devs() {
   local devs=$1
 
   for dev in ${devs}; do
-    if [ ! -b "$dev" ];then
+    # Looks like we allowed just device name (sda) as valid input. In
+    # such cases /dev/$dev should be a valid block device.
+    if [ ! -b "$dev" ] && [ ! -b "/dev/$dev" ];then
       Fatal "$dev is not a valid block device."
     fi
 
