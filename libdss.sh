@@ -3,7 +3,9 @@
 
 # echo info messages on stdout
 Info() {
-  echo "INFO: ${1}"
+  # stdout is used to pass back output from bash functions
+  #  so we use stderr
+  echo "INFO: ${1}" >&2
 }
 
 # echo error messages on stderr
