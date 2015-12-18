@@ -1,0 +1,17 @@
+Configure a disk for test
+=========================
+- Add following line to file dss-test-config
+
+  DEVS=/dev/sdb
+
+  This tells test infrastructure to use disk /dev/sdb for tests. This disk
+  should be unused.
+
+Run Tests
+=========
+# ./run-tests.sh
+
+By default /usr/bin/docker-storage-setup is used for testing. For using a
+different binary, define environment variable DOCKER_STORAGE_SETUP.
+
+DOCKER_STORAGE_SETUP=../docker-storage-setup.sh ./run-tests.sh
