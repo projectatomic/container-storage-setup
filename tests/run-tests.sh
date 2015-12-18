@@ -3,6 +3,10 @@
 WORKDIR=$(pwd)/temp/
 DSSBIN="/usr/bin/docker-storage-setup"
 LOGS=$WORKDIR/logs
+# Keeps track of overall pass/failure status of tests. Even if single test
+# fails, PASS_STATUS will be set to 1 and returned to caller when all
+# tests have run.
+PASS_STATUS=0
 
 #Helper functions
 
@@ -96,6 +100,7 @@ run_test () {
     echo "PASS: $(basename $testfile)"
   else
     echo "FAIL: $(basename $testfile)"
+    PASS_STATUS=1
   fi
 }
 
@@ -119,3 +124,4 @@ setup_workdir
 setup_dss_binary
 check_block_devs "$DEVS"
 run_tests
+exit $PASS_STATUS
