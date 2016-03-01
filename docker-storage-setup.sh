@@ -108,8 +108,19 @@ get_deferred_deletion_string() {
   fi
 }
 
+extra_options_has_dm_fs() {
+  local option
+  for option in ${EXTRA_DOCKER_STORAGE_OPTIONS}; do
+    if grep -q "dm.fs=" <<< $option; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 get_devicemapper_config_options() {
   local storage_options
+  local dm_fs="--storage-opt dm.fs=xfs"
 
   # docker expects device mapper device and not lvm device. Do the conversion.
   eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
@@ -119,12 +130,17 @@ get_devicemapper_config_options() {
     fi
   done )
 
-  storage_options="DOCKER_STORAGE_OPTIONS=\"--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string)\""
+  if extra_options_has_dm_fs; then
+    # dm.fs option defined in ${EXTRA_DOCKER_STORAGE_OPTIONS}
+    dm_fs=""
+  fi
+
+  storage_options="DOCKER_STORAGE_OPTIONS=\"--storage-driver devicemapper ${dm_fs} --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string) ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
   echo $storage_options
 }
 
 get_overlay_config_options() {
-  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay\""
+  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
 }
 
 write_storage_config_file () {

@@ -29,6 +29,10 @@ STORAGE_DRIVER:
       and "". Empty string tells docker-storage-setup to not do
       any storage setup.
 
+EXTRA_DOCKER_STORAGE_OPTIONS:
+      A set of extra options that should be passed to the Docker
+      daemon.
+
 DEVS: A quoted, space-separated list of devices to be used.
       If a drive is partitioned and contains a ${dev}1 partition,
       that partition will be configured for use. Unpartitioned
