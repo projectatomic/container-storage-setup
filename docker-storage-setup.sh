@@ -411,6 +411,21 @@ is_dev_part_of_vg() {
  return 1
 }
 
+is_block_dev_partition() {
+  local bdev=$1
+
+  [ ! -b "$bdev" ] && bdev="/dev/${bdev}"
+  if ! disktype=$(lsblk -n --nodeps --output type ${bdev}); then
+    Fatal "Failed to run lsblk on device $bdev"
+  fi
+
+  if [ "$disktype" == "part" ];then
+    return 0
+  fi
+
+  return 1
+}
+
 # Make sure passed in devices are valid block devies. Also make sure they
 # are not partitions.
 check_block_devs() {
@@ -423,7 +438,7 @@ check_block_devs() {
       Fatal "$dev is not a valid block device."
     fi
 
-    if [[ $dev =~ .*[0-9]$ ]]; then
+    if is_block_dev_partition ${dev}; then
       Fatal "Partition specification unsupported at this time."
     fi
   done
