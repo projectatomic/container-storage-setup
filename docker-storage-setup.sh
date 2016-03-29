@@ -349,11 +349,43 @@ create_lvm_thin_pool () {
   lvconvert -y --zero n $CHUNK_SIZE_ARG --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
 }
 
+get_configured_thin_pool() {
+  local options tpool opt
+
+  options=$CURRENT_STORAGE_OPTIONS
+  [ -z "$options" ] && return 0
+
+  # This assumes that thin pool is specified as dm.thinpooldev=foo. There
+  # are no spaces in between.
+  for opt in $options; do
+    if [[ $opt =~ dm.thinpooldev* ]];then
+      tpool=${opt#*=}
+      echo "$tpool"
+      return 0
+    fi
+  done
+}
+
 setup_lvm_thin_pool () {
+  local tpool
+
+  # Check if a thin pool is already configured in /etc/sysconfig/docker-storage.
+  # If yes, wait for that thin pool to come up.
+  tpool=`get_configured_thin_pool`
+
+  if [ -n "$tpool" ]; then
+     Info "Found an already configured thin pool $tpool in ${DOCKER_STORAGE}"
+     if ! wait_for_dev "$tpool"; then
+       Fatal "Already configured thin pool $tpool is not available. If thin pool is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry"
+     fi
+  fi
+
   # At this point of time, a volume group should exist for lvm thin pool
   # operations to succeed. Make that check and fail if that's not the case.
-  if [ -z "$VG_EXISTS" ]; then
+  if ! vg_exists "$VG";then
     Fatal "No valid volume group found. Exiting."
+  else
+    VG_EXISTS=1
   fi
 
   if ! lvm_pool_exists; then
