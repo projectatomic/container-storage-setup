@@ -118,6 +118,33 @@ extra_options_has_dm_fs() {
   return 1
 }
 
+# Wait for a device for certain time interval. If device is found 0 is
+# returned otherwise 1.
+wait_for_dev() {
+  local devpath=$1
+  local timeout=$DEVICE_WAIT_TIMEOUT
+
+  if [ -z "$DEVICE_WAIT_TIMEOUT" ] || [ "$DEVICE_WAIT_TIMEOUT" == "0" ];then
+    return 0
+  fi
+
+  [ -b "$devpath" ] && return 0
+
+  while [ $timeout -gt 0 ]; do
+    Info "Waiting for device $devpath to be available. Wait time remaining is $timeout seconds"
+    if [ $timeout -le 5 ];then
+      sleep $timeout
+    else
+      sleep 5
+    fi
+    timeout=$((timeout-5))
+    [ -b "$devpath" ] && return 0
+  done
+
+  Info "Timed out waiting for device $devpath"
+  return 1
+}
+
 get_devicemapper_config_options() {
   local storage_options
   local dm_fs="--storage-opt dm.fs=xfs"
@@ -499,6 +526,11 @@ unit: sectors
 
 ${dev}1 : start=     2048, size=  ${size}, Id=8e
 EOF
+    # Sometimes on slow storage it takes a while for partition device to
+    # become available. Wait for device node to show up.
+    if ! wait_for_dev ${dev}1; then
+      Fatal "Partition device ${dev}1 is not available"
+    fi
     pvcreate ${dev}1
     PVS="$PVS ${dev}1"
   done
