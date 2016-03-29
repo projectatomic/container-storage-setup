@@ -61,6 +61,9 @@ META_LV_NAME="${POOL_LV_NAME}meta"
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay"
 
+# Will have currently configured storage options in $DOCKER_STORAGE
+CURRENT_STORAGE_OPTIONS=""
+
 get_docker_version() {
   local version
 
@@ -611,6 +614,11 @@ disable_auto_pool_extension() {
 # Gets the current DOCKER_STORAGE_OPTIONS= string.
 get_docker_storage_options() {
   local options
+
+  if [ ! -f "$DOCKER_STORAGE" ];then
+    return 0
+  fi
+
   if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" $DOCKER_STORAGE | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
     echo $options
     return 0
@@ -633,15 +641,8 @@ is_valid_storage_driver() {
 get_existing_storage_driver() {
   local options driver
 
-  if [ ! -f "$DOCKER_STORAGE" ];then
-    return 0
-  fi
+  options=$CURRENT_STORAGE_OPTIONS
 
-  if ! options=$(get_docker_storage_options); then
-    return 1
-  fi
-
-  # DOCKER_STORAGE_OPTIONS= is empty there is no storage driver configured yet.
   [ -z "$options" ] && return 0
 
   # Check if -storage-driver <driver> is there.
@@ -649,6 +650,7 @@ get_existing_storage_driver() {
     return 1
   fi
 
+  # If pattern does not match then driver == options.
   if [ -n "$driver" ] && [ ! "$driver" == "$options" ];then
     echo $driver
     return 0
@@ -686,6 +688,11 @@ setup_storage() {
 
   if ! is_valid_storage_driver $STORAGE_DRIVER;then
     Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
+  fi
+
+  # Query and save current storage options
+  if ! CURRENT_STORAGE_OPTIONS=$(get_docker_storage_options); then
+    return 1
   fi
 
   if ! current_driver=$(get_existing_storage_driver);then
