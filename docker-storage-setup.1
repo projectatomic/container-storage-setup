@@ -75,6 +75,14 @@ CHUNK_SIZE:
       Controls the chunk size/block size of thin pool. Value of CHUNK_SIZE
       be suitable to be passed to --chunk-size option of lvconvert.
 
+DEVICE_WAIT_TIMEOUT:
+           Specifies a device wait timeout value in seconds. In
+           certain cases required devices might not be immediately
+           available and docker-storage-setup might decide to wait for
+           it. This timeout specifies how long one should wait for the
+           device. Default is 60 seconds. One can disable the wait by
+           specifying a value of 0.
+
 The options below should be specified as values acceptable to 'lvextend -L':
 
 ROOT_SIZE: The size to which the root filesystem should be grown.
