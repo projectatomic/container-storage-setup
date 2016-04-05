@@ -376,7 +376,7 @@ setup_lvm_thin_pool () {
   if [ -n "$tpool" ]; then
      Info "Found an already configured thin pool $tpool in ${DOCKER_STORAGE}"
      if ! wait_for_dev "$tpool"; then
-       Fatal "Already configured thin pool $tpool is not available. If thin pool is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry"
+       Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${DOCKER_STORAGE} and retry"
      fi
   fi
 
