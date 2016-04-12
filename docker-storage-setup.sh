@@ -61,6 +61,8 @@ META_LV_NAME="${POOL_LV_NAME}meta"
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay"
 
+DOCKER_METADATA_DIR="/var/lib/docker"
+
 # Will have currently configured storage options in $DOCKER_STORAGE
 CURRENT_STORAGE_OPTIONS=""
 
@@ -366,6 +368,17 @@ get_configured_thin_pool() {
   done
 }
 
+check_docker_storage_metadata() {
+  local docker_devmapper_meta_dir="$DOCKER_METADATA_DIR/devicemapper/metadata/"
+
+  [ ! -d "$docker_devmapper_meta_dir" ] && return 0
+
+  # Docker seems to be already using devicemapper storage driver. Error out.
+  Error "Docker has been previously configured for use with devicemapper graph driver. Not creating a new thin pool as existing docker metadata will fail to work with it. Manual cleanup is required before this will succeed."
+  Info "Docker state can be reset by stopping docker and by removing ${DOCKER_METADATA_DIR} directory. This will destroy existing docker images and containers and all the docker metadata."
+  exit 1
+}
+
 setup_lvm_thin_pool () {
   local tpool
 
@@ -389,6 +402,7 @@ setup_lvm_thin_pool () {
   fi
 
   if ! lvm_pool_exists; then
+    check_docker_storage_metadata
     create_lvm_thin_pool
     write_storage_config_file
   fi
