@@ -1,3 +1,13 @@
+cleanup() {
+  local vg_name=$1
+  local devs=$2
+
+  vgremove -y $vg_name >> $LOGS 2>&1
+  remove_pvs "$devs"
+  remove_partitions "$devs"
+  clean_config_files
+}
+
 # Test DEVS= directive. Returns 0 on success and 1 on failure.
 test_devs() {
   local devs=$DEVS
@@ -25,7 +35,10 @@ EOF
  $DSSBIN >> $LOGS 2>&1
 
  # Test failed.
- [ $? -ne 0 ] && return 1
+ if [ $? -ne 0 ]; then
+    cleanup $vg_name $devs
+    return 1
+ fi
 
  test_status=1
  # Make sure volume group $VG got created.
@@ -36,13 +49,7 @@ EOF
     fi
   done
 
- # Do cleanup only in case of success
- [ $test_status -eq 1 ] && return 1
-
-  vgremove -y $vg_name >> $LOGS 2>&1
-  remove_pvs "$devs"
-  remove_partitions "$devs"
-  clean_config_files
+  cleanup $vg_name $devs
   return $test_status
 }
 
