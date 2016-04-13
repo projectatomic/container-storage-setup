@@ -405,6 +405,13 @@ setup_lvm_thin_pool () {
     check_docker_storage_metadata
     create_lvm_thin_pool
     write_storage_config_file
+  else
+    # At this point /etc/sysconfig/docker-storage file should exist. If user
+    # deleted this file accidently without deleting thin pool, recreate it.
+    if [ ! -f "$DOCKER_STORAGE" ];then
+      Info "$DOCKER_STORAGE file is missing. Recreating it."
+      write_storage_config_file
+    fi
   fi
 
   # Enable or disable automatic pool extension
