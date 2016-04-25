@@ -576,6 +576,28 @@ scan_disk_partitions() {
   echo $needs_partitioned
 }
 
+create_partition() {
+  local dev="$1" size
+
+  # Use a single partition of a whole device
+  # TODO:
+  #   * Consider gpt, or unpartitioned volumes
+  #   * Error handling when partition(s) already exist
+  #   * Deal with loop/nbd device names. See growpart code
+  size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
+    cat <<EOF | sfdisk $dev
+unit: sectors
+
+${dev}1 : start=     2048, size=  ${size}, Id=8e
+EOF
+
+  # Sometimes on slow storage it takes a while for partition device to
+  # become available. Wait for device node to show up.
+  if ! wait_for_dev ${dev}1; then
+    Fatal "Partition device ${dev}1 is not available"
+  fi
+}
+
 create_disk_partitions() {
   local devs="$1"
 
@@ -583,22 +605,7 @@ create_disk_partitions() {
     if [[ $dev != /dev/* ]]; then
       dev=/dev/$dev
     fi
-    # Use a single partition of a whole device
-    # TODO:
-    #   * Consider gpt, or unpartitioned volumes
-    #   * Error handling when partition(s) already exist
-    #   * Deal with loop/nbd device names. See growpart code
-    size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
-    cat <<EOF | sfdisk $dev
-unit: sectors
-
-${dev}1 : start=     2048, size=  ${size}, Id=8e
-EOF
-    # Sometimes on slow storage it takes a while for partition device to
-    # become available. Wait for device node to show up.
-    if ! wait_for_dev ${dev}1; then
-      Fatal "Partition device ${dev}1 is not available"
-    fi
+    create_partition $dev
     pvcreate ${dev}1
     PVS="$PVS ${dev}1"
   done
