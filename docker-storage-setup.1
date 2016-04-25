@@ -83,6 +83,14 @@ DEVICE_WAIT_TIMEOUT:
            device. Default is 60 seconds. One can disable the wait by
            specifying a value of 0.
 
+WIPE_SIGNATURES:
+      Wipe any signatures found on disk. Valid values are
+      true/false and default value is false. By default if any
+      signatures are found on disk operation is aborted. If this value
+      is set to true, then signatures will either be wiped or
+      overwritten as suitable. This also means that if there is any
+      data on disk, it will be lost.
+
 The options below should be specified as values acceptable to 'lvextend -L':
 
 ROOT_SIZE: The size to which the root filesystem should be grown.

@@ -537,7 +537,7 @@ is_block_dev_partition() {
   return 1
 }
 
-check_block_dev_sig() {
+check_wipe_block_dev_sig() {
   local bdev=$1
   local sig
 
@@ -549,9 +549,17 @@ check_block_dev_sig() {
 
   [ "$sig" == "" ] && return 0
 
+  if [ "$WIPE_SIGNATURES" == "true" ];then
+    Info "Wipe Signatures is set to true. Any signatures on $bdev will be wiped."
+    if ! wipefs -a $bdev; then
+      Fatal "Failed to wipe signatures on device $bdev"
+    fi
+    return 0
+  fi
+
   while IFS=, read offset uuid label type; do
     [ "$offset" == "# offset" ] && continue
-    Fatal "Found $type signature on device ${bdev} at offset ${offset}. Wipe signatures using wipefs and retry."
+    Fatal "Found $type signature on device ${bdev} at offset ${offset}. Wipe signatures using wipefs or use WIPE_SIGNATURES=true and retry."
   done <<< "$sig"
 }
 
@@ -584,6 +592,13 @@ scan_disks() {
 
     if is_dev_part_of_vg ${dev}1 $VG; then
       Info "Device ${dev} is already partitioned and is part of volume group $VG"
+      continue
+    fi
+
+    # If signatures are being overridden, then simply return the disk as new
+    # disk. Even if it is partitioned, partition signatures will be wiped.
+    if [ "$WIPE_SIGNATURES" == "true" ];then
+      new_disks="$new_disks $dev"
       continue
     fi
 
@@ -876,7 +891,7 @@ if [[ -n "$DEVS" && -n "$VG" ]]; then
   P=$(scan_disks)
   if [[ -n "$P" ]]; then
     for dev in $P; do
-      check_block_dev_sig $dev
+      check_wipe_block_dev_sig $dev
     done
     create_disk_partitions "$P"
     create_extend_volume_group
