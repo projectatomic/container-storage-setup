@@ -11,9 +11,10 @@ cleanup() {
   wipe_signatures "$devs"
 }
 
-# Test DEVS= directive. Returns 0 on success and 1 on failure.
-test_devs() {
-  local devs=$DEVS
+# Make sure a disk with lvm signature is rejected and is not overriden
+# by dss. Returns 0 on success and 1 on failure.
+test_lvm_sig() {
+  local devs=$DEVS dev
   local test_status
   local testname=`basename "$0"`
   local vg_name
@@ -34,26 +35,25 @@ DEVS="$devs"
 VG=$vg_name
 EOF
 
- # Run docker-storage-setup
- $DSSBIN >> $LOGS 2>&1
-
- # Test failed.
- if [ $? -ne 0 ]; then
-    cleanup $vg_name $devs
-    return 1
- fi
-
- test_status=1
- # Make sure volume group $VG got created.
-  for vg in $(vgs --noheadings -o vg_name); do
-    if [ "$vg" == "$vg_name" ]; then
-      test_status=0
-      break
-    fi
+  # create lvm signatures on disks
+  for dev in $devs; do
+    pvcreate -f $dev >> $LOGS 2>&1
   done
+
+  test_status=1
+  # Run docker-storage-setup
+  $DSSBIN >> $LOGS 2>&1
+
+  # Dss should fail. If it did not, then test failed. This is very crude
+  # check though as dss can fail for so many reasons. A more precise check
+  # would be too check for exact error message.
+  [ $? -ne 0 ] && test_status=0
 
   cleanup $vg_name $devs
   return $test_status
 }
 
-test_devs
+# Make sure a disk with lvm signature is rejected and is not overriden
+# by dss. Returns 0 on success and 1 on failure.
+
+test_lvm_sig

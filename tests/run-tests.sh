@@ -47,6 +47,26 @@ setup_dss_binary() {
   echo "INFO: Using $DSSBIN for running tests."
 }
 
+# If disk already has signatures, error out. It should be a clean disk.
+check_disk_signatures() {
+  local bdev=$1
+  local sig
+
+  if ! sig=$(wipefs -p $bdev); then
+    echo "ERROR: Failed to check signatures on device $bdev" >&2
+    exit 1
+  fi
+
+  [ "$sig" == "" ] && return 0
+
+  while IFS=, read offset uuid label type; do
+    [ "$offset" == "# offset" ] && continue
+
+    echo "ERROR: Found $type signature on device ${bdev} at offset ${offset}. Wipe signatures using wipefs and retry."
+    exit 1
+  done <<< "$sig"
+}
+
 #Tests
 
 check_block_devs() {
@@ -68,11 +88,15 @@ check_block_devs() {
       echo "ERROR: Partition specification unsupported at this time."
       exit 1
     fi
+
+    check_disk_signatures $dev
   done
 }
 
 run_test () {
   testfile=$1
+
+  echo "Running test $testfile" >> $LOGS 2>&1
   bash -c $testfile
 
   if [ $? -eq 0 ];then

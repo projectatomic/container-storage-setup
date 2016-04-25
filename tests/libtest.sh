@@ -21,3 +21,11 @@ remove_partitions() {
     parted ${dev} rm 1 >> $LOGS 2>&1
   done
 }
+
+# Wipe all signatures on devices
+wipe_signatures() {
+  local devs=$1
+  for dev in $devs; do
+    wipefs -a $dev >> $LOGS 2>&1
+  done
+}
