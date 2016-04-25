@@ -555,25 +555,31 @@ check_block_devs() {
   done
 }
 
-scan_disk_partitions() {
-  local needs_partitioned=''
+# Scans all the disks listed in DEVS= and returns the disks which are not
+# already part of volume group and are new and require further processing.
+scan_disks() {
+  local new_disks=""
 
-  #validate DEVS elements
   for dev in $DEVS; do
     local basename=$(basename $dev)
-    local p=$(awk "\$4 ~ /${basename}./ {print \$4}" /proc/partitions)
-    if [[ -z "$p" ]]; then
-      needs_partitioned="$dev $needs_partitioned"
-    else
-      if is_dev_part_of_vg ${dev}1 $VG; then
-        Info "Device ${dev} is already partitioned and is part of volume group $VG"
-      else
-        Fatal "Device $dev is already partitioned and cannot be added to volume group $VG"
-      fi
+    local p
+
+    if is_dev_part_of_vg ${dev}1 $VG; then
+      Info "Device ${dev} is already partitioned and is part of volume group $VG"
+      continue
     fi
+
+    # If device does not have partitions, it is a new disk requiring processing.
+    p=$(awk "\$4 ~ /${basename}./ {print \$4}" /proc/partitions)
+    if [[ -z "$p" ]]; then
+      new_disks="$dev $new_disks"
+      continue
+    fi
+
+    Fatal "Device $dev is already partitioned and cannot be added to volume group $VG"
   done
 
-  echo $needs_partitioned
+  echo $new_disks
 }
 
 create_partition() {
@@ -844,7 +850,7 @@ if [[ -n "$DEVS" && -n "$VG" ]]; then
 
   # If all the disks have already been correctly partitioned, there is
   # nothing more to do
-  P=$(scan_disk_partitions)
+  P=$(scan_disks)
   if [[ -n "$P" ]]; then
     create_disk_partitions "$P"
     create_extend_volume_group
