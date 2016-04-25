@@ -630,7 +630,12 @@ create_disk_partitions() {
       dev=/dev/$dev
     fi
     create_partition $dev
-    pvcreate ${dev}1
+
+    # By now we have ownership of disk and we have checked there are no
+    # signatures on disk or signatures have been overridden. Don't care
+    # about any signatures found in the middle of disk after creating
+    # partition and use force option.
+    pvcreate -f ${dev}1
     PVS="$PVS ${dev}1"
   done
 }
