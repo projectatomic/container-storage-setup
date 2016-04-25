@@ -1,8 +1,9 @@
 #!/bin/bash
 
 WORKDIR=$(pwd)/temp/
-DSSBIN="/usr/bin/docker-storage-setup"
-LOGS=$WORKDIR/logs
+export DSSBIN="/usr/bin/docker-storage-setup"
+export LOGS=$WORKDIR/logs
+
 # Keeps track of overall pass/failure status of tests. Even if single test
 # fails, PASS_STATUS will be set to 1 and returned to caller when all
 # tests have run.
@@ -72,7 +73,7 @@ check_block_devs() {
 
 run_test () {
   testfile=$1
-  source $testfile
+  bash -c $testfile
 
   if [ $? -eq 0 ];then
     echo "PASS: $(basename $testfile)"
@@ -92,9 +93,10 @@ run_tests() {
 #Main Script
 
 # Source config file
-SRCDIR=`dirname $0`
+export SRCDIR=`dirname $0`
 if [ -e $SRCDIR/dss-test-config ]; then
   source $SRCDIR/dss-test-config
+  export DEVS
 fi
 
 source $SRCDIR/libtest.sh

@@ -1,3 +1,5 @@
+source $SRCDIR/libtest.sh
+
 cleanup() {
   local vg_name=$1
   local devs=$2
