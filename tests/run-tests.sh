@@ -28,11 +28,6 @@ check_config_files() {
   fi
 }
 
-clean_config_files() {
-  rm -f /etc/sysconfig/docker-storage-setup
-  rm -f /etc/sysconfig/docker-storage
-}
-
 setup_dss_binary() {
   # One can setup environment variable DOCKER_STORAGE_SETUP to override
   # which binary is used for tests.
@@ -49,23 +44,6 @@ setup_dss_binary() {
     DSSBIN=$DOCKER_STORAGE_SETUP
   fi
   echo "INFO: Using $DSSBIN for running tests."
-}
-
-remove_pvs() {
-  local devs=$1
-  # Assume $dev1 is pv to remove.
-  for dev in $devs; do
-    pvremove -y ${dev}1 >> $LOGS 2>&1
-  done
-}
-
-remove_partitions() {
-  local devs=$1
-
-  # Assume partition number 1 is to be removed.
-  for dev in $devs; do
-    parted ${dev} rm 1 >> $LOGS 2>&1
-  done
 }
 
 #Tests
@@ -118,6 +96,8 @@ SRCDIR=`dirname $0`
 if [ -e $SRCDIR/dss-test-config ]; then
   source $SRCDIR/dss-test-config
 fi
+
+source $SRCDIR/libtest.sh
 
 check_config_files
 setup_workdir
