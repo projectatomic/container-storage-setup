@@ -537,6 +537,24 @@ is_block_dev_partition() {
   return 1
 }
 
+check_block_dev_sig() {
+  local bdev=$1
+  local sig
+
+  [ ! -b "$bdev" ] && bdev="/dev/${bdev}"
+
+  if ! sig=$(wipefs -p $bdev); then
+    Fatal "Failed to check signatures on device $bdev"
+  fi
+
+  [ "$sig" == "" ] && return 0
+
+  while IFS=, read offset uuid label type; do
+    [ "$offset" == "# offset" ] && continue
+    Fatal "Found $type signature on device ${bdev} at offset ${offset}. Wipe signatures using wipefs and retry."
+  done <<< "$sig"
+}
+
 # Make sure passed in devices are valid block devies. Also make sure they
 # are not partitions.
 check_block_devs() {
@@ -852,6 +870,9 @@ if [[ -n "$DEVS" && -n "$VG" ]]; then
   # nothing more to do
   P=$(scan_disks)
   if [[ -n "$P" ]]; then
+    for dev in $P; do
+      check_block_dev_sig $dev
+    done
     create_disk_partitions "$P"
     create_extend_volume_group
   fi
