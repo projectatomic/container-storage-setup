@@ -133,9 +133,13 @@ wait_for_dev() {
   local devpath=$1
   local timeout=$DEVICE_WAIT_TIMEOUT
 
-  [ -b "$devpath" ] && return 0
+  if [ -b "$devpath" ];then
+    Info "Device node $devpath exists."
+    return 0
+  fi
 
   if [ -z "$DEVICE_WAIT_TIMEOUT" ] || [ "$DEVICE_WAIT_TIMEOUT" == "0" ];then
+    Info "Not waiting for device $devpath as DEVICE_WAIT_TIMEOUT=${DEVICE_WAIT_TIMEOUT}."
     return 0
   fi
 
@@ -147,7 +151,10 @@ wait_for_dev() {
       sleep 5
     fi
     timeout=$((timeout-5))
-    [ -b "$devpath" ] && return 0
+    if [ -b "$devpath" ]; then
+      Info "Device node $devpath exists."
+      return 0
+    fi
   done
 
   Info "Timed out waiting for device $devpath"
