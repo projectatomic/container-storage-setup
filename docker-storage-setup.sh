@@ -632,6 +632,10 @@ EOF
 
   # Sometimes on slow storage it takes a while for partition device to
   # become available. Wait for device node to show up.
+  if ! udevadm settle;then
+    Fatal "udevadm settle after partition creation failed. Exiting."
+  fi
+
   if ! wait_for_dev ${dev}1; then
     Fatal "Partition device ${dev}1 is not available"
   fi
