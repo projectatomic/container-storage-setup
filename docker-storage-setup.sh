@@ -133,11 +133,11 @@ wait_for_dev() {
   local devpath=$1
   local timeout=$DEVICE_WAIT_TIMEOUT
 
+  [ -b "$devpath" ] && return 0
+
   if [ -z "$DEVICE_WAIT_TIMEOUT" ] || [ "$DEVICE_WAIT_TIMEOUT" == "0" ];then
     return 0
   fi
-
-  [ -b "$devpath" ] && return 0
 
   while [ $timeout -gt 0 ]; do
     Info "Waiting for device $devpath to be available. Wait time remaining is $timeout seconds"
