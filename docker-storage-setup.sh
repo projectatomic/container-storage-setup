@@ -390,6 +390,13 @@ check_docker_storage_metadata() {
   exit 1
 }
 
+reset_lvm_thin_pool () {
+  if lvm_pool_exists; then
+      lvchange -an $VG/${POOL_LV_NAME}
+      lvremove $VG/${POOL_LV_NAME}
+  fi
+}
+
 setup_lvm_thin_pool () {
   local tpool
 
@@ -834,23 +841,24 @@ setup_storage() {
   fi
 }
 
+reset_storage() {
+    if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+	reset_lvm_thin_pool
+    fi
+    rm -f $DOCKER_STORAGE
+}
+
 usage() {
-  cat >&2 <<-FOE
+  cat <<-FOE
     Usage: $1 [OPTIONS]
 
     Grows the root filesystem and sets up storage for docker
 
     Options:
-      -h, --help    Print help message
+      --help    Print help message
+      --reset   Reset your docker storage to init state. 
 FOE
 }
-
-# Main Script
-
-if [ $# -gt 0 ]; then
-  usage $(basename $0)
-  exit 0
-fi
 
 # Source library. If there is a library present in same dir as d-s-s, source
 # that otherwise fall back to standard library. This is useful when modifyin
@@ -897,6 +905,21 @@ else
   if vg_exists "$VG";then
     VG_EXISTS=1
   fi
+fi
+
+# Main Script
+
+if [ $# -gt 0 ]; then
+    if [ "$1" == "--help" ]; then
+	usage $(basename $0)
+	exit 0
+    elif [ "$1" == "--reset" ]; then
+	reset_storage
+	exit 0
+    else
+        usage $(basename $0) >&2
+	exit 1
+    fi
 fi
 
 # If there is no volume group specified or no root volume group, there is
