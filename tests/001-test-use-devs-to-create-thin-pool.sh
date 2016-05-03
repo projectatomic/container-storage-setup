@@ -1,16 +1,5 @@
 source $SRCDIR/libtest.sh
 
-cleanup() {
-  local vg_name=$1
-  local devs=$2
-
-  vgremove -y $vg_name >> $LOGS 2>&1
-  remove_pvs "$devs"
-  remove_partitions "$devs"
-  clean_config_files
-  wipe_signatures "$devs"
-}
-
 # Test DEVS= directive. Returns 0 on success and 1 on failure.
 test_devs() {
   local devs=$DEVS

@@ -29,3 +29,14 @@ wipe_signatures() {
     wipefs -a $dev >> $LOGS 2>&1
   done
 }
+
+cleanup() {
+  local vg_name=$1
+  local devs=$2
+
+  vgremove -y $vg_name >> $LOGS 2>&1
+  remove_pvs "$devs"
+  remove_partitions "$devs"
+  clean_config_files
+  wipe_signatures "$devs"
+}

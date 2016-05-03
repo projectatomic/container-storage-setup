@@ -1,16 +1,5 @@
 source $SRCDIR/libtest.sh
 
-cleanup() {
-  local vg_name=$1
-  local devs=$2
-
-  vgremove -y $vg_name >> $LOGS 2>&1
-  remove_pvs "$devs"
-  remove_partitions "$devs"
-  clean_config_files
-  wipe_signatures "$devs"
-}
-
 # Make sure a disk with lvm signature is rejected and is not overriden
 # by dss. Returns 0 on success and 1 on failure.
 test_lvm_sig() {
