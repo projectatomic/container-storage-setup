@@ -28,7 +28,7 @@ EOF
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    cleanup $vg_name $devs
+    cleanup $vg_name "$devs"
     return 1
  fi
 
@@ -41,7 +41,7 @@ EOF
     fi
   done
 
-  cleanup $vg_name $devs
+  cleanup $vg_name "$devs"
   return $test_status
 }
 

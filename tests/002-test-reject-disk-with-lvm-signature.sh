@@ -38,7 +38,7 @@ EOF
   # would be too check for exact error message.
   [ $? -ne 0 ] && test_status=0
 
-  cleanup $vg_name $devs
+  cleanup $vg_name "$devs"
   return $test_status
 }
 
