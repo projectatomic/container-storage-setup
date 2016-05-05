@@ -72,7 +72,7 @@ check_disk_signatures() {
 check_block_devs() {
   local devs=$1
 
-  if [ -z $devs ];then
+  if [ -z "$devs" ];then
     echo "ERROR: A block device need to be specified for testing in dss-test-config file."
     exit 1
   fi
