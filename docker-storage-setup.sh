@@ -63,6 +63,10 @@ STORAGE_DRIVERS="devicemapper overlay"
 
 DOCKER_METADATA_DIR="/var/lib/docker"
 
+# DEVS can have device names without absolute path. Convert these to absolute
+# paths and save in ABS_DEVS and use in rest of the code.
+DEVS_ABS=""
+
 # Will have currently configured storage options in $DOCKER_STORAGE
 CURRENT_STORAGE_OPTIONS=""
 
@@ -337,7 +341,7 @@ create_data_lv() {
 }
 
 create_lvm_thin_pool () {
-  if [ -z "$DEVS" ] && [ -z "$VG_EXISTS" ]; then
+  if [ -z "$DEVS_ABS" ] && [ -z "$VG_EXISTS" ]; then
     Fatal "Specified volume group $VG does not exist, and no devices were specified"
   fi
 
@@ -525,7 +529,6 @@ vg_exists() {
 is_block_dev_partition() {
   local bdev=$1
 
-  [ ! -b "$bdev" ] && bdev="/dev/${bdev}"
   if ! disktype=$(lsblk -n --nodeps --output type ${bdev}); then
     Fatal "Failed to run lsblk on device $bdev"
   fi
@@ -540,8 +543,6 @@ is_block_dev_partition() {
 check_wipe_block_dev_sig() {
   local bdev=$1
   local sig
-
-  [ ! -b "$bdev" ] && bdev="/dev/${bdev}"
 
   if ! sig=$(wipefs -p $bdev); then
     Fatal "Failed to check signatures on device $bdev"
@@ -564,21 +565,27 @@ check_wipe_block_dev_sig() {
 }
 
 # Make sure passed in devices are valid block devies. Also make sure they
-# are not partitions.
-check_block_devs() {
-  local devs=$1
+# are not partitions. Names which are of the form "sdb", convert them to
+# their absolute path for processing in rest of the script.
+canonicalize_block_devs() {
+  local devs=$1 dev
+  local devs_abs dev_abs
 
   for dev in ${devs}; do
     # Looks like we allowed just device name (sda) as valid input. In
     # such cases /dev/$dev should be a valid block device.
-    if [ ! -b "$dev" ] && [ ! -b "/dev/$dev" ];then
-      Fatal "$dev is not a valid block device."
-    fi
+    dev_abs=$dev
+    [ ! -b "$dev" ] && dev_abs="/dev/$dev"
+    [ ! -b "$dev_abs" ] && Fatal "$dev_abs is not a valid block device."
 
-    if is_block_dev_partition ${dev}; then
+    if is_block_dev_partition ${dev_abs}; then
       Fatal "Partition specification unsupported at this time."
     fi
+    devs_abs="$devs_abs $dev_abs"
   done
+
+  # Return list of devices to caller.
+  echo "$devs_abs"
 }
 
 # Scans all the disks listed in DEVS= and returns the disks which are not
@@ -586,7 +593,7 @@ check_block_devs() {
 scan_disks() {
   local new_disks=""
 
-  for dev in $DEVS; do
+  for dev in $DEVS_ABS; do
     local basename=$(basename $dev)
     local p
 
@@ -645,9 +652,6 @@ create_disk_partitions() {
   local devs="$1"
 
   for dev in $devs; do
-    if [[ $dev != /dev/* ]]; then
-      dev=/dev/$dev
-    fi
     create_partition $dev
 
     # By now we have ownership of disk and we have checked there are no
@@ -891,7 +895,7 @@ fi
 # If there is no volume group specified or no root volume group, there is
 # nothing to do in terms of dealing with disks.
 if [[ -n "$DEVS" && -n "$VG" ]]; then
-  check_block_devs ${DEVS}
+  DEVS_ABS=$(canonicalize_block_devs "${DEVS}")
 
   # If all the disks have already been correctly partitioned, there is
   # nothing more to do
