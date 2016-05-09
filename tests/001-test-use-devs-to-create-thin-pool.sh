@@ -2,7 +2,7 @@ source $SRCDIR/libtest.sh
 
 # Test DEVS= directive. Returns 0 on success and 1 on failure.
 test_devs() {
-  local devs=$DEVS
+  local devs=$TEST_DEVS
   local test_status
   local testname=`basename "$0"`
   local vg_name

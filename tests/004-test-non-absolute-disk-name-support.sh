@@ -8,7 +8,7 @@ test_non_absolute_disk_name() {
 
   # Remove prefix /dev/ from disk names to test if non-absolute disk
   # names work.
-  for dev in $DEVS; do
+  for dev in $TEST_DEVS; do
     dev=${dev##/dev/}
     devs="$devs $dev"
   done
@@ -34,7 +34,7 @@ EOF
 
   # Test failed.
   if [ $? -ne 0 ]; then
-    cleanup $vg_name "$DEVS"
+    cleanup $vg_name "$TEST_DEVS"
     return 1
   fi
 
@@ -46,7 +46,7 @@ EOF
     fi
   done
 
-  cleanup $vg_name "$DEVS"
+  cleanup $vg_name "$TEST_DEVS"
   return $test_status
 }
 

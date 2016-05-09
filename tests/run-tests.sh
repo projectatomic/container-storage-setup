@@ -120,7 +120,10 @@ run_tests() {
 export SRCDIR=`dirname $0`
 if [ -e $SRCDIR/dss-test-config ]; then
   source $SRCDIR/dss-test-config
-  export DEVS
+  # DEVS is used by dss as well. So exporting this can fail any tests which
+  # don't want to use DEVS. So export TEST_DEVS instead.
+  TEST_DEVS=$DEVS
+  export TEST_DEVS
 fi
 
 source $SRCDIR/libtest.sh

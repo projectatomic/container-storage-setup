@@ -3,7 +3,7 @@ source $SRCDIR/libtest.sh
 # Make sure a disk with lvm signature is rejected and is not overriden
 # by dss. Returns 0 on success and 1 on failure.
 test_lvm_sig() {
-  local devs=$DEVS dev
+  local devs=$TEST_DEVS dev
   local test_status
   local testname=`basename "$0"`
   local vg_name

@@ -1,7 +1,7 @@
 source $SRCDIR/libtest.sh
 
 test_override_signatures() {
-  local devs=$DEVS dev
+  local devs=$TEST_DEVS dev
   local test_status
   local testname=`basename "$0"`
   local vg_name
