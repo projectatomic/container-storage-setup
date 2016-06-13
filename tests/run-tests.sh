@@ -2,7 +2,7 @@
 
 WORKDIR=$(pwd)/temp/
 export DSSBIN="/usr/bin/docker-storage-setup"
-export LOGS=$WORKDIR/logs
+export LOGS=$WORKDIR/logs.txt
 
 # Keeps track of overall pass/failure status of tests. Even if single test
 # fails, PASS_STATUS will be set to 1 and returned to caller when all
