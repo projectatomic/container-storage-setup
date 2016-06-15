@@ -6,19 +6,14 @@ test_lvm_sig() {
   local devs=$TEST_DEVS dev
   local test_status
   local testname=`basename "$0"`
-  local vg_name
   local vg_name="dss-test-foo"
 
- # Error out if any pre-existing volume group vg named dss-test-foo
-  for vg in $(vgs --noheadings -o vg_name); do
-    if [ "$vg" == "$vg_name" ]; then
-      echo "ERROR: $testname: Volume group $vg_name already exists."
-      return 1
-    fi
-  done
-
-  # Create config file
-  clean_config_files
+  # Error out if any pre-existing volume group vg named dss-test-foo
+  if vg_exists "vg_name"; then
+    echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
+    return 1
+  fi
+ 
   cat << EOF > /etc/sysconfig/docker-storage-setup
 DEVS="$devs"
 VG=$vg_name

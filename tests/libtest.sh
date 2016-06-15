@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Tests if the volume group vg_name exists
+vg_exists() {
+  local vg_name="$1"
+
+  for vg in $(vgs --noheadings -o vg_name); do
+    if [ "$vg" == "$vg_name" ]; then
+      return 0
+    fi
+  done
+  return 1
+  
+}
+
 clean_config_files() {
   rm -f /etc/sysconfig/docker-storage-setup
   rm -f /etc/sysconfig/docker-storage

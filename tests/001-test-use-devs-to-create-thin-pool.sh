@@ -5,16 +5,13 @@ test_devs() {
   local devs=$TEST_DEVS
   local test_status
   local testname=`basename "$0"`
-  local vg_name
   local vg_name="dss-test-foo"
-
- # Error out if any pre-existing volume group vg named dss-test-foo
-  for vg in $(vgs --noheadings -o vg_name); do
-    if [ "$vg" == "$vg_name" ]; then
-      echo "ERROR: $testname: Volume group $vg_name already exists."
-      return 1
-    fi
-  done
+  
+  # Error out if any pre-existing volume group vg named dss-test-foo  
+  if vg_exists "$vg_name"; then
+    echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
+    return 1
+  fi
 
   # Create config file
   clean_config_files
@@ -32,14 +29,12 @@ EOF
     return 1
  fi
 
- test_status=1
- # Make sure volume group $VG got created.
-  for vg in $(vgs --noheadings -o vg_name); do
-    if [ "$vg" == "$vg_name" ]; then
-      test_status=0
-      break
-    fi
-  done
+  test_status=1
+  
+  # Make sure volume group $VG got created
+  if vg_exists "$vg_name"; then
+    test_status=0
+  fi
 
   cleanup $vg_name "$devs"
   return $test_status
