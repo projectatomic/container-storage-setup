@@ -9,7 +9,7 @@ test_lvm_sig() {
   local vg_name="dss-test-foo"
 
   # Error out if any pre-existing volume group vg named dss-test-foo
-  if vg_exists "vg_name"; then
+  if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
     return 1
   fi
