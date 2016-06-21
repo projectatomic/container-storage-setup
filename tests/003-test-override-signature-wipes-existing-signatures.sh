@@ -9,7 +9,7 @@ test_override_signatures() {
   # Error out if vg_name VG exists already
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
-    return 1
+    return $test_status
   fi 
 
   cat << EOF > /etc/sysconfig/docker-storage-setup
@@ -29,7 +29,7 @@ EOF
   # Test failed.
   if [ $? -ne 0 ]; then
     cleanup $vg_name "$devs"
-    return 1
+    return $test_status
   fi
 
   # Make sure volume group $VG got created.

@@ -16,7 +16,7 @@ test_non_absolute_disk_name() {
   # Error out if any pre-existing volume group vg named dss-test-foo
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
-    return 1
+    return $test_status
   fi
  
   cat << EOF > /etc/sysconfig/docker-storage-setup

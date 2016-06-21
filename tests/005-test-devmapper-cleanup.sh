@@ -10,7 +10,7 @@ test_reset_devmapper() {
   # Error out if any pre-existing volume group vg named dss-test-foo
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
-    return 1
+    return $test_status
   fi 
 
   cat << EOF > /etc/sysconfig/docker-storage-setup
@@ -25,7 +25,7 @@ EOF
  if [ $? -ne 0 ]; then
     echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
     cleanup $vg_name "$devs"
-    return 1
+    return $test_status
  fi
 
   $DSSBIN --reset >> $LOGS 2>&1
