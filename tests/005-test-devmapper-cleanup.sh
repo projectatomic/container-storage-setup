@@ -3,7 +3,7 @@ source $SRCDIR/libtest.sh
 # Test "docker-storage-setup reset". Returns 0 on success and 1 on failure.
 test_reset_devmapper() {
   local devs=${TEST_DEVS}
-  local test_status
+  local test_status=1
   local testname=`basename "$0"`
   local vg_name="dss-test-foo"
 
@@ -28,7 +28,6 @@ EOF
     return 1
  fi
 
-  test_status=1
   $DSSBIN --reset >> $LOGS 2>&1
   # Test failed.
   if [ $? -eq 0 ]; then

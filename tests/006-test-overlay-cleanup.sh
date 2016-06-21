@@ -2,7 +2,7 @@ source $SRCDIR/libtest.sh
 
 # Test "docker-storage-setup reset". Returns 0 on success and 1 on failure.
 test_reset_overlay() {
-  local test_status
+  local test_status=0
   local testname=`basename "$0"`
 
   cat << EOF > /etc/sysconfig/docker-storage-setup
@@ -19,7 +19,6 @@ EOF
     return 1
  fi
 
- test_status=0
  $DSSBIN --reset >> $LOGS 2>&1
  if [ $? -ne 0 ]; then
     # Test failed.

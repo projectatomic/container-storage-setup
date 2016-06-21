@@ -3,7 +3,7 @@ source $SRCDIR/libtest.sh
 # Test DEVS= directive. Returns 0 on success and 1 on failure.
 test_devs() {
   local devs=$TEST_DEVS
-  local test_status
+  local test_status=1
   local testname=`basename "$0"`
   local vg_name="dss-test-foo"
   
@@ -27,8 +27,6 @@ EOF
     cleanup $vg_name "$devs"
     return 1
  fi
-
-  test_status=1
   
   # Make sure volume group $VG got created
   if vg_exists "$vg_name"; then

@@ -2,7 +2,7 @@ source $SRCDIR/libtest.sh
 
 test_override_signatures() {
   local devs=$TEST_DEVS dev
-  local test_status
+  local test_status=1
   local testname=`basename "$0"`
   local vg_name="dss-test-foo"
 
@@ -23,7 +23,6 @@ EOF
     pvcreate -f $dev >> $LOGS 2>&1
   done
 
-  test_status=1
   # Run docker-storage-setup
   $DSSBIN >> $LOGS 2>&1
 

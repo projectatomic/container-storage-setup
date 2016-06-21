@@ -2,7 +2,7 @@ source $SRCDIR/libtest.sh
 
 test_non_absolute_disk_name() {
   local devs dev
-  local test_status
+  local test_status=1
   local testname=`basename "$0"`
   local vg_name="dss-test-foo"
 
@@ -24,7 +24,6 @@ DEVS="$devs"
 VG=$vg_name
 EOF
 
-  test_status=1
   # Run docker-storage-setup
   $DSSBIN >> $LOGS 2>&1
 
