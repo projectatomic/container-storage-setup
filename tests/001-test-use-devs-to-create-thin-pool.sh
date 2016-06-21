@@ -14,7 +14,6 @@ test_devs() {
   fi
 
   # Create config file
-  clean_config_files
   cat << EOF > /etc/sysconfig/docker-storage-setup
 DEVS="$devs"
 VG=$vg_name

@@ -5,8 +5,6 @@ test_reset_overlay() {
   local test_status
   local testname=`basename "$0"`
 
-  # Create config file
-  clean_config_files
   cat << EOF > /etc/sysconfig/docker-storage-setup
 STORAGE_DRIVER=overlay
 EOF
