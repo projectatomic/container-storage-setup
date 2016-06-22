@@ -11,6 +11,14 @@ PASS_STATUS=0
 
 #Helper functions
 
+# Take care of active docker and old docker metadata
+check_docker_active() {
+  if systemctl -q is-active "docker.service"; then
+    echo "ERROR: docker.service is currently active. Please stop docker.service before running tests." >&2
+    exit 1
+  fi
+}
+
 setup_workdir() {
   mkdir -p $WORKDIR
   rm -f $LOGS
@@ -128,6 +136,7 @@ fi
 
 source $SRCDIR/libtest.sh
 
+check_docker_active
 check_config_files
 setup_workdir
 setup_dss_binary
