@@ -1,6 +1,7 @@
 #!/bin/bash
 
 WORKDIR=$(pwd)/temp/
+DOCKER_METADATA_DIR=/var/lib/docker
 export DSSBIN="/usr/bin/docker-storage-setup"
 export LOGS=$WORKDIR/logs.txt
 
@@ -17,6 +18,16 @@ check_docker_active() {
     echo "ERROR: docker.service is currently active. Please stop docker.service before running tests." >&2
     exit 1
   fi
+}
+
+# Check metadata if using devmapper
+check_metadata() {
+  local docker_devmapper_meta_dir="$DOCKER_METADATA_DIR/devicemapper/metadata/"
+  
+  [ ! -d "$docker_devmapper_meta_dir" ] && return 0
+
+  echo "ERROR: /var/lib/docker directory exists and contains old metadata. Remove it." >&2
+  exit 1
 }
 
 setup_workdir() {
@@ -137,6 +148,7 @@ fi
 source $SRCDIR/libtest.sh
 
 check_docker_active
+check_metadata
 check_config_files
 setup_workdir
 setup_dss_binary
