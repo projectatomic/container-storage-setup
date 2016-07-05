@@ -245,7 +245,7 @@ write_storage_config_file () {
 $storage_options
 EOF
 
-  mv $DOCKER_STORAGE.tmp $DOCKER_STORAGE
+  mv -Z $DOCKER_STORAGE.tmp $DOCKER_STORAGE
 }
 
 create_metadata_lv() {
@@ -745,7 +745,7 @@ enable_auto_pool_extension() {
   local profileName="${volume_group}--${pool_volume}-extend"
   local profileFile="${profileName}.profile"
   local profileDir
-  local tmpFile=`mktemp -t tmp.XXXXX`
+  local tmpFile=`mktemp -p /run -t tmp.XXXXX`
 
   profileDir=$(lvm dumpconfig | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
   [ -n "$profileDir" ] || return 1
@@ -767,7 +767,7 @@ activation {
 
 }
 EOF
-  mv $tmpFile ${profileDir}/${profileFile}
+  mv -Z $tmpFile ${profileDir}/${profileFile}
   lvchange --metadataprofile ${profileName}  ${volume_group}/${pool_volume}
 }
 
