@@ -59,7 +59,7 @@ DATA_LV_NAME=$POOL_LV_NAME
 META_LV_NAME="${POOL_LV_NAME}meta"
 
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
-STORAGE_DRIVERS="devicemapper overlay"
+STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 DOCKER_METADATA_DIR="/var/lib/docker"
 
@@ -186,6 +186,10 @@ get_overlay_config_options() {
   echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
 }
 
+get_overlay2_config_options() {
+  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay2 ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
+}
+
 write_storage_config_file () {
   local storage_options
 
@@ -195,6 +199,10 @@ write_storage_config_file () {
     fi
   elif [ "$STORAGE_DRIVER" == "overlay" ];then
     if ! storage_options=$(get_overlay_config_options); then
+      return 1
+    fi
+  elif [ "$STORAGE_DRIVER" == "overlay2" ];then
+    if ! storage_options=$(get_overlay2_config_options); then
       return 1
     fi
   fi
@@ -836,7 +844,7 @@ setup_storage() {
   # Set up lvm thin pool LV
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     setup_lvm_thin_pool
-  elif [ "$STORAGE_DRIVER" == "overlay" ];then
+  elif [[ "$STORAGE_DRIVER" == "overlay" || "$STORAGE_DRIVER" == "overlay2" ]];then
     setup_overlay
   fi
 }
