@@ -783,7 +783,7 @@ get_existing_storage_driver() {
   [ -z "$options" ] && return 0
 
   # Check if -storage-driver <driver> is there.
-  if ! driver=$(echo $options | sed -n 's/.*\(--storage-driver [ ]*[a-z]*\).*/\1/p' | sed 's/--storage-driver *//');then
+  if ! driver=$(echo $options | sed -n 's/.*\(--storage-driver [ ]*[a-z0-9]*\).*/\1/p' | sed 's/--storage-driver *//');then
     return 1
   fi
 
@@ -794,7 +794,7 @@ get_existing_storage_driver() {
   fi
 
   # Check if -s <driver> is there.
-  if ! driver=$(echo $options | sed -n 's/.*\(-s [ ]*[a-z]*\).*/\1/p' | sed 's/-s *//');then
+  if ! driver=$(echo $options | sed -n 's/.*\(-s [ ]*[a-z][0-9]*\).*/\1/p' | sed 's/-s *//');then
     return 1
   fi
 
