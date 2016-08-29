@@ -419,7 +419,7 @@ setup_lvm_thin_pool () {
      # dss generated thin pool device name starts with /dev/mapper/ and
      # ends with POOL_LV_NAME
      if [[ "$tpool" != /dev/mapper/*${escaped_pool_lv_name} ]];then
-       Fatal "Thin pool ${tpool} does not see to be managed by docker-storage-setup. Exiting."
+       Fatal "Thin pool ${tpool} does not seem to be managed by docker-storage-setup. Exiting."
      fi
 
      if ! wait_for_dev "$tpool"; then
