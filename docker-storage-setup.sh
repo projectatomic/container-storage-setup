@@ -413,7 +413,15 @@ setup_lvm_thin_pool () {
   tpool=`get_configured_thin_pool`
 
   if [ -n "$tpool" ]; then
+     local escaped_pool_lv_name=`echo $POOL_LV_NAME | sed 's/-/--/g'`
      Info "Found an already configured thin pool $tpool in ${DOCKER_STORAGE}"
+
+     # dss generated thin pool device name starts with /dev/mapper/ and
+     # ends with POOL_LV_NAME
+     if [[ "$tpool" != /dev/mapper/*${escaped_pool_lv_name} ]];then
+       Fatal "Thin pool ${tpool} does not see to be managed by docker-storage-setup. Exiting."
+     fi
+
      if ! wait_for_dev "$tpool"; then
        Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${DOCKER_STORAGE} and retry"
      fi
