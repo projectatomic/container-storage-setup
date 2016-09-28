@@ -111,7 +111,7 @@ get_deferred_deletion_string() {
   [ -z "$major" ] && return 0
   [ -z "$minor" ] && return 0
 
-  # docker 1.9 onwards supports deferred device removal. Enable it.
+  # docker 1.9 onwards supports deferred device deletion. Enable it.
   if [ $major -gt 1 ] || ([ $major -eq 1 ] && [ $minor -ge 9 ]);then
     echo "--storage-opt dm.use_deferred_deletion=true"
   fi
