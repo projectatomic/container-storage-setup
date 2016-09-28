@@ -63,6 +63,10 @@ STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 DOCKER_METADATA_DIR="/var/lib/docker"
 
+PIPE1=/run/dss-fifo1
+PIPE2=/run/dss-fifo2
+TEMPDIR=$(mktemp --tmpdir -d)
+
 # DEVS can have device names without absolute path. Convert these to absolute
 # paths and save in ABS_DEVS and use in rest of the code.
 DEVS_ABS=""
@@ -111,10 +115,49 @@ get_deferred_deletion_string() {
   [ -z "$major" ] && return 0
   [ -z "$minor" ] && return 0
 
-  # docker 1.9 onwards supports deferred device deletion. Enable it.
-  if [ $major -gt 1 ] || ([ $major -eq 1 ] && [ $minor -ge 9 ]);then
-    echo "--storage-opt dm.use_deferred_deletion=true"
+  if should_enable_deferred_deletion $major $minor; then
+     echo "--storage-opt dm.use_deferred_deletion=true"
   fi
+}
+
+should_enable_deferred_deletion() {
+   # docker 1.9 onwards supports deferred device deletion. Enable it.
+   local major=$1
+   local minor=$2
+   if [ $major -lt 1 ] || ([ $major -eq 1 ] && [ $minor -lt 9 ]);then
+      return 1
+   fi
+   if platform_supports_deferred_deletion; then
+      return 0
+   fi
+   return 1
+}
+
+platform_supports_deferred_deletion() {
+        local deferred_deletion_supported=1
+        trap cleanup_pipes EXIT
+        mkfifo $PIPE1
+        mkfifo $PIPE2
+        mount -o bind $TEMPDIR $TEMPDIR
+        if [ ! -x "/usr/lib/docker-storage-setup/dss-child-read-write" ];then
+           return 1
+        fi
+        unshare -m /usr/lib/docker-storage-setup/dss-child-read-write $PIPE1 $PIPE2 &
+        read -t 10 n <>$PIPE1
+        if [ "$n" != "start" ];then
+	   return 1
+        fi
+        umount $TEMPDIR
+        rmdir $TEMPDIR > /dev/null 2>&1
+        deferred_deletion_supported=$?
+        echo "finish" > $PIPE2
+        return $deferred_deletion_supported
+}
+
+cleanup_pipes(){
+    rm -f $PIPE1
+    rm -f $PIPE2
+    rmdir $TEMPDIR 2>/dev/null
 }
 
 extra_options_has_dm_fs() {

@@ -12,6 +12,7 @@ Source1:        docker-storage-setup.service
 Source2:        docker-storage-setup.conf
 Source3:        docker-storage-setup-override.conf
 Source4:        libdss.sh
+Source5:        dss-child-read-write.sh
 
 BuildRequires:  pkgconfig(systemd)
 
@@ -39,6 +40,7 @@ install -d %{buildroot}%{_sysconfdir}/sysconfig/
 install -p -m 644 %{SOURCE3} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage-setup
 install -d %{buildroot}/%{dsslibdir}
 install -p -m 755 %{SOURCE4} %{buildroot}/%{dsslibdir}/libdss.sh
+install -p -m 755 %{SOURCE5} %{buildroot}/%{dsslibdir}/dss-child-read-write
 
 %post
 %systemd_post %{name}.service
