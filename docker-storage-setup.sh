@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #--
-# Copyright 2014-2015 Red Hat, Inc.
+# Copyright 2014-2016 Red Hat, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -225,29 +225,20 @@ get_devicemapper_config_options() {
   echo $storage_options
 }
 
-get_overlay_config_options() {
-  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
-}
-
-get_overlay2_config_options() {
-  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver overlay2 ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
+get_config_options() {
+  if [ "$1" == "devicemapper" ]; then
+    get_devicemapper_config_options
+    return $?
+  fi
+  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver $1 ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
+  return 0
 }
 
 write_storage_config_file () {
   local storage_options
 
-  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
-    if ! storage_options=$(get_devicemapper_config_options); then
+  if ! storage_options=$(get_config_options $STORAGE_DRIVER); then
       return 1
-    fi
-  elif [ "$STORAGE_DRIVER" == "overlay" ];then
-    if ! storage_options=$(get_overlay_config_options); then
-      return 1
-    fi
-  elif [ "$STORAGE_DRIVER" == "overlay2" ];then
-    if ! storage_options=$(get_overlay2_config_options); then
-      return 1
-    fi
   fi
 
   cat <<EOF > $DOCKER_STORAGE.tmp
@@ -497,10 +488,6 @@ setup_lvm_thin_pool () {
   else
     disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
   fi
-}
-
-setup_overlay () {
-  write_storage_config_file
 }
 
 lvm_pool_exists() {
@@ -895,8 +882,8 @@ setup_storage() {
   # Set up lvm thin pool LV
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     setup_lvm_thin_pool
-  elif [[ "$STORAGE_DRIVER" == "overlay" || "$STORAGE_DRIVER" == "overlay2" ]];then
-    setup_overlay
+  else
+      write_storage_config_file
   fi
 }
 
