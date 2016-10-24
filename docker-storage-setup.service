@@ -1,6 +1,6 @@
 [Unit]
 Description=Docker Storage Setup
-After=cloud-final.service
+After=cloud-init.service
 Before=docker.service
 
 [Service]
