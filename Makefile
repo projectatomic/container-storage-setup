@@ -1,3 +1,4 @@
+DOCKER ?= docker
 # Installation directories.
 PREFIX ?= $(DESTDIR)/usr
 BINDIR ?= $(PREFIX)/bin
@@ -13,12 +14,12 @@ clean:
 .PHONY: install
 install:
 
-	install -D -m 755 docker-storage-setup.sh ${BINDIR}/docker-storage-setup
-	install -D -m 644 docker-storage-setup.service ${UNITDIR}/docker-storage-setup.service
-	install -D -m 644 docker-storage-setup.conf ${DSSLIBDIR}/docker-storage-setup
-	if [ ! -f ${SYSCONFDIR}/docker-storage-setup ]; then \
-		install -D -m 644 docker-storage-setup-override.conf ${SYSCONFDIR}/docker-storage-setup; \
+	install -D -m 755 ${DOCKER}-storage-setup.sh ${BINDIR}/${DOCKER}-storage-setup
+	install -D -m 644 ${DOCKER}-storage-setup.service ${UNITDIR}/${DOCKER}-storage-setup.service
+	install -D -m 644 ${DOCKER}-storage-setup.conf ${DSSLIBDIR}/${DOCKER}-storage-setup
+	if [ ! -f ${SYSCONFDIR}/${DOCKER}-storage-setup ]; then \
+		install -D -m 644 ${DOCKER}-storage-setup-override.conf ${SYSCONFDIR}/${DOCKER}-storage-setup; \
 	fi
 	install -D -m 755 libdss.sh ${DSSLIBDIR}/libdss.sh
 	install -D -m 755 dss-child-read-write.sh ${DSSLIBDIR}/dss-child-read-write
-	install -D -m 644 docker-storage-setup.1 ${MANDIR}/man1/docker-storage-setup.1
+	install -D -m 644 ${DOCKER}-storage-setup.1 ${MANDIR}/man1/${DOCKER}-storage-setup.1
