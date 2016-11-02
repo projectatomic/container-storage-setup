@@ -136,18 +136,16 @@ should_enable_deferred_deletion() {
 platform_supports_deferred_deletion() {
         local deferred_deletion_supported=1
         trap cleanup_pipes EXIT
-        mkfifo $PIPE1
-        mkfifo $PIPE2
-        mount -o bind $TEMPDIR $TEMPDIR
         if [ ! -x "/usr/lib/docker-storage-setup/dss-child-read-write" ];then
            return 1
         fi
-        unshare -m /usr/lib/docker-storage-setup/dss-child-read-write $PIPE1 $PIPE2 &
+        mkfifo $PIPE1
+        mkfifo $PIPE2
+        unshare -m /usr/lib/docker-storage-setup/dss-child-read-write $PIPE1 $PIPE2 "$TEMPDIR" &
         read -t 10 n <>$PIPE1
         if [ "$n" != "start" ];then
 	   return 1
         fi
-        umount $TEMPDIR
         rmdir $TEMPDIR > /dev/null 2>&1
         deferred_deletion_supported=$?
         echo "finish" > $PIPE2
