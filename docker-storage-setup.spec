@@ -7,12 +7,6 @@ Summary:        A simple service to setup docker storage devices
 
 License:        ASL 2.0
 URL:            http://github.com/a13m/docker-storage-setup/
-Source0:        docker-storage-setup.sh
-Source1:        docker-storage-setup.service
-Source2:        docker-storage-setup.conf
-Source3:        docker-storage-setup-override.conf
-Source4:        libdss.sh
-Source5:        dss-child-read-write.sh
 
 BuildRequires:  pkgconfig(systemd)
 
@@ -30,17 +24,7 @@ as the root logical volume and partition table.
 %build
 
 %install
-install -d %{buildroot}%{_bindir}
-install -p -m 755 %{SOURCE0} %{buildroot}%{_bindir}/docker-storage-setup
-install -d %{buildroot}%{_unitdir}
-install -p -m 644 %{SOURCE1} %{buildroot}%{_unitdir}
-install -d %{buildroot}/%{dsslibdir}
-install -p -m 644 %{SOURCE2} %{buildroot}/%{dsslibdir}/docker-storage-setup
-install -d %{buildroot}%{_sysconfdir}/sysconfig/
-install -p -m 644 %{SOURCE3} %{buildroot}%{_sysconfdir}/sysconfig/docker-storage-setup
-install -d %{buildroot}/%{dsslibdir}
-install -p -m 755 %{SOURCE4} %{buildroot}/%{dsslibdir}/libdss.sh
-install -p -m 755 %{SOURCE5} %{buildroot}/%{dsslibdir}/dss-child-read-write
+%make_install
 
 %post
 %systemd_post %{name}.service
@@ -54,9 +38,9 @@ install -p -m 755 %{SOURCE5} %{buildroot}/%{dsslibdir}/dss-child-read-write
 %files
 %{_unitdir}/docker-storage-setup.service
 %{_bindir}/docker-storage-setup
-%{dsslibdir}/docker-storage-setup
 %config(noreplace) %{_sysconfdir}/sysconfig/docker-storage-setup
-%{dsslibdir}/libdss.sh
+%dir %{dsslibdir}
+%{_mandir}/man1/docker-storage-setup.1
 
 %changelog
 * Thu Oct 16 2014 Andy Grimm <agrimm@redhat.com> - 0.0.1-2
