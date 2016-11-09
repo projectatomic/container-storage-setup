@@ -608,8 +608,16 @@ check_wipe_block_dev_sig() {
 canonicalize_block_devs() {
   local devs=$1 dev
   local devs_abs dev_abs
+  local dest_dev
 
   for dev in ${devs}; do
+    # If the device name is a symlink, follow it and use the target
+    if [ -h "$dev" ];then
+      if ! dest_dev=$(readlink -e $dev);then
+        Fatal "Failed to resolve symbolic link $dev"
+      fi
+      dev=$dest_dev
+    fi
     # Looks like we allowed just device name (sda) as valid input. In
     # such cases /dev/$dev should be a valid block device.
     dev_abs=$dev

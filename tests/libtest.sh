@@ -53,3 +53,11 @@ cleanup() {
   clean_config_files
   wipe_signatures "$devs"
 }
+
+cleanup_soft_links() {
+  local dev devs=$1
+
+  for dev in $devs; do
+    rm $dev
+  done
+}
