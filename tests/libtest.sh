@@ -2,7 +2,7 @@
 
 # Tests if the volume group vg_name exists
 vg_exists() {
-  local vg_name="$1"
+  local vg vg_name="$1"
 
   for vg in $(vgs --noheadings -o vg_name); do
     if [ "$vg" == "$vg_name" ]; then
@@ -19,7 +19,7 @@ clean_config_files() {
 }
 
 remove_pvs() {
-  local devs=$1
+  local dev devs=$1
   # Assume $dev1 is pv to remove.
   for dev in $devs; do
     pvremove -y ${dev}1 >> $LOGS 2>&1
@@ -27,7 +27,7 @@ remove_pvs() {
 }
 
 remove_partitions() {
-  local devs=$1
+  local dev devs=$1
 
   # Assume partition number 1 is to be removed.
   for dev in $devs; do
@@ -37,7 +37,7 @@ remove_partitions() {
 
 # Wipe all signatures on devices
 wipe_signatures() {
-  local devs=$1
+  local dev devs=$1
   for dev in $devs; do
     wipefs -a $dev >> $LOGS 2>&1
   done
