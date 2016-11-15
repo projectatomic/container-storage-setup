@@ -55,8 +55,6 @@ set -e
 # Note: lvm2 version should be same or higher than lvm2-2.02.112 for lvm
 #       thin pool functionality to work properly.
 POOL_LV_NAME="docker-pool"
-DATA_LV_NAME=$POOL_LV_NAME
-META_LV_NAME="${POOL_LV_NAME}meta"
 
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay overlay2"
@@ -209,7 +207,7 @@ get_devicemapper_config_options() {
   # docker expects device mapper device and not lvm device. Do the conversion.
   eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
     eval $line
-    if [ "$LVM2_LV_NAME" = "$DATA_LV_NAME" ]; then
+    if [ "$LVM2_LV_NAME" = "$POOL_LV_NAME" ]; then
       echo POOL_DEVICE_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
     fi
   done )
@@ -244,27 +242,6 @@ $storage_options
 EOF
 
   mv -Z $DOCKER_STORAGE.tmp $DOCKER_STORAGE
-}
-
-create_metadata_lv() {
-  # If metadata lvm already exists (failures from previous run), then
-  # don't create it.
-  # TODO: Modify script to cleanup meta and data lvs if failure happened
-  # later. Don't exit with error leaving partially created lvs behind.
-
-  if lvs -a $VG/${META_LV_NAME} --noheadings &>/dev/null; then
-    Info "Metadata volume $META_LV_NAME already exists. Not creating a new one."
-    return 0
-  fi
-
-  # Reserve 0.1% of the free space in the VG for docker metadata.
-  # Calculating the based on actual data size might be better, but is
-  # more difficult do to the range of possible inputs.
-  VG_SIZE=$( vgs --noheadings --nosuffix --units s -o vg_size $VG )
-  META_SIZE=$(( $VG_SIZE / 1000 + 1 ))
-  if [ ! -n "$META_LV_SIZE" ]; then
-    lvcreate -y -L ${META_SIZE}s -n $META_LV_NAME $VG
-  fi
 }
 
 convert_size_in_bytes() {
@@ -368,9 +345,13 @@ check_min_data_size_condition() {
   fi
 }
 
-create_data_lv() {
+create_lvm_thin_pool () {
+  if [ -z "$DEVS_ABS" ] && [ -z "$VG_EXISTS" ]; then
+    Fatal "Specified volume group $VG does not exist, and no devices were specified"
+  fi
+
   if [ ! -n "$DATA_SIZE" ]; then
-    Fatal "Data volume creation failed. No DATA_SIZE specified"
+    Fatal "DATA_SIZE not specified."
   fi
 
   if ! check_data_size_syntax $DATA_SIZE; then
@@ -379,27 +360,26 @@ create_data_lv() {
 
   check_min_data_size_condition
 
-  # TODO: Error handling when DATA_SIZE > available space.
-  if [[ $DATA_SIZE == *%* ]]; then
-    lvcreate -y -l $DATA_SIZE -n $DATA_LV_NAME $VG
-  else
-    lvcreate -y -L $DATA_SIZE -n $DATA_LV_NAME $VG
-  fi
-}
+  # Calculate size of metadata lv. Reserve 0.1% of the free space in the VG
+  # for docker metadata.
+  VG_SIZE=$(vgs --noheadings --nosuffix --units s -o vg_size $VG)
+  META_SIZE=$(( $VG_SIZE / 1000 + 1 ))
 
-create_lvm_thin_pool () {
-  if [ -z "$DEVS_ABS" ] && [ -z "$VG_EXISTS" ]; then
-    Fatal "Specified volume group $VG does not exist, and no devices were specified"
+  if [ -z "$META_SIZE" ];then
+    Fatal "Failed to calculate metadata volume size."
   fi
-
-  # First create metadata lv. Down the line let lvm2 create it automatically.
-  create_metadata_lv
-  create_data_lv
 
   if [ -n "$CHUNK_SIZE" ]; then
     CHUNK_SIZE_ARG="-c $CHUNK_SIZE"
   fi
-  lvconvert -y --zero n $CHUNK_SIZE_ARG --thinpool $VG/$DATA_LV_NAME --poolmetadata $VG/$META_LV_NAME
+
+  if [[ $DATA_SIZE == *%* ]]; then
+    DATA_SIZE_ARG="-l $DATA_SIZE"
+  else
+    DATA_SIZE_ARG="-L $DATA_SIZE"
+  fi
+
+  lvcreate -y --type thin-pool --zero n $CHUNK_SIZE_ARG --poolmetadatasize ${META_SIZE}s $DATA_SIZE_ARG -n $POOL_LV_NAME $VG
 }
 
 get_configured_thin_pool() {
