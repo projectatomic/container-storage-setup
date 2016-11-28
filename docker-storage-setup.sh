@@ -55,6 +55,8 @@ set -e
 # Note: lvm2 version should be same or higher than lvm2-2.02.112 for lvm
 #       thin pool functionality to work properly.
 POOL_LV_NAME="docker-pool"
+DOCKER_ROOT_LV_NAME="docker-root-lv"
+DOCKER_ROOT_DIR="/var/lib/docker"
 
 DOCKER_STORAGE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay overlay2"
@@ -409,6 +411,43 @@ check_docker_storage_metadata() {
   Info "Docker state can be reset by stopping docker and by removing ${DOCKER_METADATA_DIR} directory. This will destroy existing docker images and containers and all the docker metadata."
   exit 1
 }
+
+systemd_escaped_filename () {
+  local escaped_path filename path=$1
+  escaped_path=$(echo ${path}|sed 's|-|\\x2d|g')
+  filename=$(echo ${escaped_path}.mount|sed 's|/|-|g' | cut -b 2-)
+  echo $filename
+}
+
+reset_docker_root_volume () {
+  local mp filename
+  if docker_root_volume_exists; then
+    mp=$(docker_root_lv_mountpoint)
+    if [ -n "$mp" ];then
+      if ! umount $mp >/dev/null 2>&1; then
+        Fatal "Failed to unmount $mp"
+      fi
+    fi
+    lvchange -an $VG/${DOCKER_ROOT_LV_NAME}
+    lvremove $VG/${DOCKER_ROOT_LV_NAME}
+  else
+    return 0
+  fi
+  # If the user has manually unmounted ${DOCKER_ROOT_DIR}, mountpoint (mp)
+  # will be empty. Extract ${mp} from /etc/sysconfig/docker in that case.
+  if [ -z "$mp" ];then
+    if ! get_docker_root_dir; then
+      return 1
+    fi
+    mp=${DOCKER_ROOT_DIR}
+  fi
+  filename=$(systemd_escaped_filename $mp)
+  if [ -f /etc/systemd/system/$filename ];then
+    systemctl disable $filename >/dev/null 2>&1
+    systemctl daemon-reload
+    rm /etc/systemd/system/$filename >/dev/null 2>&1
+  fi
+} 
 
 reset_lvm_thin_pool () {
   if lvm_pool_exists; then
@@ -839,6 +878,102 @@ get_existing_storage_driver() {
   return 1
 }
 
+docker_root_volume_exists() {
+  lvs $VG/$DOCKER_ROOT_LV_NAME > /dev/null 2>&1 && return 0
+  return 1
+}
+
+# This returns the mountpoint of $DOCKER_ROOT_LV_NAME
+docker_root_lv_mountpoint() {
+  local mounts
+  mounts=$(findmnt -n -o TARGET --first-only --source /dev/$VG/$DOCKER_ROOT_LV_NAME)
+  echo $mounts
+}
+
+# Mount docker root volume on $DOCKER_ROOT_DIR.
+# drop a systemd mount unit configuration file at /etc/systemd/system.
+# This would allow the $DOCKER_ROOT_DIR mountpoint to persist across reboots.
+mount_docker_root_volume() {
+  local filename
+  # filename must match $DOCKER_ROOT_DIR path. e.g if $DOCKER_ROOT_DIR is /var/lib/docker
+  # then filename will be var-lib-docker.mount
+  filename=$(systemd_escaped_filename ${DOCKER_ROOT_DIR})
+  cat <<EOF > /etc/systemd/system/$filename
+[Unit]
+Description=Mount docker-root-lv on docker root directory.
+Before=docker-storage-sethup.service
+
+[Mount]
+What=/dev/$VG/$DOCKER_ROOT_LV_NAME
+Where=${DOCKER_ROOT_DIR}
+Type=xfs
+Options=defaults
+
+[Install]
+WantedBy=docker-storage-setup.service
+EOF
+  systemctl enable $filename >/dev/null 2>&1
+  systemctl start $filename 
+}
+
+# Create a logical volume of size specified by first argument. Name of the
+# volume is specified using second argument.
+create_lv() {
+  local data_size=$1
+  local data_lv_name=$2
+
+  # TODO: Error handling when data_size > available space.
+  if [[ $data_size == *%* ]]; then
+    lvcreate -y -l $data_size -n $data_lv_name $VG || return 1
+  else
+    lvcreate -y -L $data_size -n $data_lv_name $VG || return 1
+  fi
+return 0
+}
+
+setup_docker_root_volume() {
+  if [ -z "$DOCKER_ROOT_VOLUME_SIZE" ]; then
+    Fatal "Specify a valid value for DOCKER_ROOT_VOLUME_SIZE."
+  fi
+
+  if ! check_data_size_syntax $DOCKER_ROOT_VOLUME_SIZE; then
+    Fatal "DOCKER_ROOT_VOLUME_SIZE value $DOCKER_ROOT_VOLUME_SIZE is invalid."
+  fi
+
+  if ! create_lv $DOCKER_ROOT_VOLUME_SIZE $DOCKER_ROOT_LV_NAME; then
+    Fatal "Failed to create volume $DOCKER_ROOT_VOLUME_SIZE of size ${DOCKER_ROOT_VOLUME_SIZE}."
+  fi
+
+  if ! mkfs -t xfs /dev/$VG/$DOCKER_ROOT_LV_NAME > /dev/null; then
+    Fatal "Failed to create filesystem on /dev/$VG/${DOCKER_ROOT_LV_NAME}."
+  fi
+
+  if ! mount_docker_root_volume; then
+    Fatal "Failed to mount docker root volume ${DOCKER_ROOT_LV_NAME} on ${DOCKER_ROOT_DIR}"
+  fi
+
+  # setup right selinux label first time fs is created. Mount operation
+  # changes the label of directory to reflect the label on root inode
+  # of mounted fs.
+  if ! restore_selinux_context $DOCKER_ROOT_DIR; then
+    return 1
+  fi
+}
+
+setup_docker_root_lv_fs() {
+  [ "$DOCKER_ROOT_VOLUME" != "yes" ] && return 0
+  if ! setup_docker_root_dir; then
+    return 1
+  fi
+  if docker_root_volume_exists; then
+    return 0
+  fi
+  # Docker root volume does not exist. Create one.
+  if ! setup_docker_root_volume; then
+    Fatal "Failed to setup logical volume for docker root."
+  fi
+}
+
 setup_storage() {
   local current_driver
 
@@ -865,15 +1000,77 @@ setup_storage() {
    Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove $DOCKER_STORAGE and retry."
   fi
 
-  # Set up lvm thin pool LV
+  # If a user decides to setup both (a) and (b):
+  # a) lvm thin pool for devicemapper.
+  # b) a separate volume for docker root.
+  # (a) will have a higher priority than (b) and will be setup first.
+
+  # Set up lvm thin pool LV.
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     setup_lvm_thin_pool
   else
       write_storage_config_file
   fi
+
+  # If docker root is on a separate volume, setup that.
+  if ! setup_docker_root_lv_fs; then
+    Error "Failed to setup docker root volume."
+    return 1
+  fi
+}
+
+restore_selinux_context() {
+  local dir=$1
+
+  if ! restorecon -R $dir; then
+    Error "restorecon -R $dir failed."
+    return 1
+  fi
+}
+
+get_docker_root_dir(){
+    local flag=false path
+    options=$(grep -e "^OPTIONS" /etc/sysconfig/docker|cut -d"'" -f 2)
+    for opt in $options
+    do
+        if [ "$flag" = true ];then
+           path=$opt
+           flag=false
+           continue
+        fi
+	case "$opt" in
+            "-g"|"--graph")
+                flag=true
+                ;;
+            -g=*|--graph=*)
+		path=$(echo $opt|cut -d"=" -f 2)
+                ;;
+            *)
+                ;;
+        esac
+    done
+    if ! DOCKER_ROOT_DIR=$(realpath -m $path);then
+      Fatal "realpath failed on $path"
+    fi
+}
+
+setup_docker_root_dir() {
+  if ! get_docker_root_dir; then
+    return 1
+  fi
+
+  [ -d "$DOCKER_ROOT_DIR" ] && return 0
+
+  # Directory does not exist. Create one.
+  mkdir -p $DOCKER_ROOT_DIR
+  return $?
 }
 
 reset_storage() {
+  
+    if [ "$DOCKER_ROOT_VOLUME" == "yes" ];then
+        reset_docker_root_volume
+    fi      	
     if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
 	reset_lvm_thin_pool
     fi
