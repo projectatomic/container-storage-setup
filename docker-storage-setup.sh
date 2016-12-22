@@ -1049,6 +1049,9 @@ get_docker_root_dir(){
                 ;;
         esac
     done
+    if [ -z "$path" ];then
+      return
+    fi
     if ! DOCKER_ROOT_DIR=$(realpath -m $path);then
       Fatal "realpath failed on $path"
     fi
