@@ -10,7 +10,14 @@ vg_exists() {
     fi
   done
   return 1
-  
+}
+
+# Tests if the logical volume lv_name exists
+lv_exists() {
+  local vg_name=$1
+  local lv_name=$2
+  lvs $vg_name/$lv_name > /dev/null 2>&1 && return 0
+  return 1
 }
 
 clean_config_files() {
@@ -74,6 +81,17 @@ cleanup() {
   udevadm settle
   clean_config_files
   wipe_signatures "$devs"
+}
+
+cleanup_mount_file() {
+  local mount_path=$1
+  local mount_filename=$(echo $mount_path|sed 's/\//-/g'|cut -c 2-)
+
+  if [ -f "/etc/systemd/system/$mount_filename.mount" ];then
+    systemctl disable $mount_filename.mount >/dev/null 2>&1
+    rm /etc/systemd/system/$mount_filename.mount >/dev/null 2>&1
+    systemctl daemon-reload
+  fi
 }
 
 cleanup_soft_links() {
