@@ -901,7 +901,7 @@ mount_docker_root_volume() {
   cat <<EOF > /etc/systemd/system/$filename
 [Unit]
 Description=Mount docker-root-lv on docker root directory.
-Before=docker-storage-sethup.service
+Before=docker-storage-setup.service
 
 [Mount]
 What=/dev/$VG/$DOCKER_ROOT_LV_NAME
