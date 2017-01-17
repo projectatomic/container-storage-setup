@@ -105,11 +105,17 @@ DOCKER_ROOT_VOLUME:
 
       To carve out a separate logical volume for storing docker
       images/containers/volumes data, set DOCKER_ROOT_VOLUME=yes
-      NOTE: devicemapper stores images/containers on thin pool.
 
       docker-storage-setup creates a logical volume with an XFS
       filesystem mounted on docker root directory
       (default: /var/lib/docker).
+
+      Note: DOCKER_ROOT_VOLUME is deprecated, and will be removed
+      soon. Use CONTAINER_ROOT_LV_MOUNT_PATH instead.
+
+      Note: A user cannot specify DOCKER_ROOT_VOLUME and
+      CONTAINER_ROOT_LV_MOUNT_PATH together. They are mutually exclusive
+      options.
 
 DOCKER_ROOT_VOLUME_SIZE:
       Specify the desired size for docker root volume. It defaults
@@ -122,12 +128,45 @@ DOCKER_ROOT_VOLUME_SIZE:
       in syntax are acceptable.  If value does not contain "%" it 
       is assumed value is suitable for "lvcreate -L".
 
-      NOTE: If both STORAGE_DRIVER=devicemapper and 
+      Note: If both STORAGE_DRIVER=devicemapper and
       DOCKER_ROOT_VOLUME=yes is set, docker-storage-setup would set
       up the thin pool for devicemapper first, followed by docker 
       root volume. e.g if free space in the volume group is 10G, 
       devicemapper thin pool size would be 4G (40% of 10G) and docker
       root volume would be 2.4G (40% of 6G).
+
+CONTAINER_ROOT_LV_NAME:
+     Name of the logical volume that will be mounted on
+     CONTAINER_ROOT_LV_MOUNT_PATH. If a user is setting
+     CONTAINER_ROOT_LV_MOUNT_PATH, he/she must set
+     CONTAINER_ROOT_LV_NAME.
+
+CONTAINER_ROOT_LV_MOUNT_PATH:
+     Creates a logical volume named $CONTAINER_ROOT_LV_NAME
+     and mount it on $CONTAINER_ROOT_LV_MOUNT_PATH. By default
+     no new logical volume will be created. e.g. Specifying
+     CONTAINER_ROOT_LV_MOUNT_PATH=/var/lib/containers will carve
+     out a logical volume, create a filesystem on it and
+     mount it on /var/lib/containers.
+
+CONTAINER_ROOT_LV_SIZE:
+     Specify the desired size for CONTAINER_ROOT_LV_MOUNT_PATH
+     root volume. It defaults to 40% of all free space.
+
+     CONTAINER_ROOT_LV_SIZE can take values acceptable to
+     "lvcreate -L" as well as some values acceptable to
+     "lvcreate -l". If user intends to pass values acceptable
+     to "lvcreate -l", then only those values which contains "%"
+     in syntax are acceptable.  If value does not contain "%" it
+     is assumed value is suitable for "lvcreate -L".
+
+     Note: If both STORAGE_DRIVER=devicemapper and
+     CONTAINER_ROOT_LV_MOUNT_PATH is set, docker-storage-setup
+     would set up the thin pool for devicemapper first,
+     followed by extra volume. e.g if free space in the
+     volume group is 10G, devicemapper thin pool size
+     would be 4G (40% of 10G) and extra volume would be
+     2.4G (40% of 6G).
 
 The options below should be specified as values acceptable to 'lvextend -L':
 
