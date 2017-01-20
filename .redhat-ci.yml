@@ -1,0 +1,31 @@
+branches:
+  - master
+  - auto
+  - try
+
+host:
+  distro: fedora/25/atomic
+  specs:
+    ephemeral: 10
+
+context: fedora/25/atomic
+
+required: true
+
+env:
+  DOCKER_STORAGE_SETUP: ./docker-storage-setup.sh
+
+tests:
+  - systemctl stop docker
+  - rm -rf /var/lib/docker
+  - rm -f /etc/sysconfig/docker-storage-setup
+  - rm -f /etc/sysconfig/docker-storage
+  - if findmnt /dev/vdb; then umount /dev/vdb; fi
+  - wipefs -a /dev/vdb
+  - echo "DEVS=/dev/vdb" >> tests/dss-test-config
+  - tests/run-tests.sh
+
+timeout: 15m
+
+artifacts:
+  - temp/logs.txt
