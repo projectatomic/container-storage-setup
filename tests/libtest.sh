@@ -26,12 +26,30 @@ remove_pvs() {
   done
 }
 
+parted_del_partition() {
+  local dev=$1
+  parted ${dev} rm 1 >> $LOGS 2>&1
+}
+
+sfdisk_del_partition() {
+  local dev=$1
+  sfdisk --delete ${dev} 1 >> $LOGS 2>&1
+}
+
 remove_partitions() {
   local dev devs=$1
+  local use_parted=false
 
-  # Assume partition number 1 is to be removed.
+  if [ -x "/usr/sbin/parted" ]; then
+    use_parted=true
+  fi
+
   for dev in $devs; do
-    parted ${dev} rm 1 >> $LOGS 2>&1
+    if [ "$use_parted" == "true" ]; then
+      parted_del_partition "$dev"
+    else
+      sfdisk_del_partition "$dev"
+    fi
   done
 }
 
@@ -50,6 +68,10 @@ cleanup() {
   vgremove -y $vg_name >> $LOGS 2>&1
   remove_pvs "$devs"
   remove_partitions "$devs"
+  # After removing partitions let udev settle down. In some
+  # cases it has been observed that udev rule kept the device
+  # busy.
+  udevadm settle
   clean_config_files
   wipe_signatures "$devs"
 }
