@@ -12,12 +12,11 @@ context: fedora/25/atomic
 
 required: true
 
-env:
-  DOCKER_STORAGE_SETUP: ./docker-storage-setup.sh
-
 tests:
   - systemctl stop docker
   - rm -rf /var/lib/docker
+  - ostree admin unlock
+  - make install
   - rm -f /etc/sysconfig/docker-storage-setup
   - rm -f /etc/sysconfig/docker-storage
   - if findmnt /dev/vdb; then umount /dev/vdb; fi
