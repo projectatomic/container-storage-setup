@@ -6,7 +6,7 @@ branches:
 host:
   distro: fedora/25/atomic
   specs:
-    ephemeral: 10
+    secondary-disk: 10
 
 context: fedora/25/atomic
 
