@@ -706,9 +706,8 @@ scan_disks() {
   echo $new_disks
 }
 
-create_partition() {
+create_partition_sfdisk(){
   local dev="$1" size
-
   # Use a single partition of a whole device
   # TODO:
   #   * Consider gpt, or unpartitioned volumes
@@ -720,6 +719,21 @@ unit: sectors
 
 ${dev}1 : start=     2048, size=  ${size}, Id=8e
 EOF
+}
+
+create_partition_parted(){
+  local dev="$1"
+  parted $dev --script mklabel msdos mkpart primary 0% 100% set 1 lvm on
+}
+
+create_partition() {
+  local dev="$1"
+
+  if [ -x "/usr/sbin/parted" ]; then
+    create_partition_parted $dev
+  else
+    create_partition_sfdisk $dev
+  fi
 
   # Sometimes on slow storage it takes a while for partition device to
   # become available. Wait for device node to show up.
