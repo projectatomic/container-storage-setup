@@ -33,9 +33,10 @@ EOF
   if [ $? -eq 0 ]; then
      if [ ! -e /etc/sysconfig/docker-storage ]; then
           test_status=0
+     else
+	  echo "ERROR: $testname: $DSSBIN Failed /etc/sysconfig/docker-storage still exists." >> $LOGS
      fi
-  fi
-  if [ ${test_status} -eq 1 ]; then
+  else
      echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
   fi
 

@@ -29,6 +29,7 @@ EOF
 
   # Test failed.
   if [ $? -ne 0 ]; then
+    echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
     cleanup_soft_links "$devlinks"
     cleanup $vg_name "$TEST_DEVS"
     return $test_status
@@ -37,6 +38,8 @@ EOF
   # Make sure volume group $VG got created.
   if vg_exists "$vg_name"; then
     test_status=0
+  else
+    echo "ERROR: $testname: $DSSBIN Failed $vg_name was not created." >> $LOGS
   fi
 
   cleanup_soft_links "$devlinks"

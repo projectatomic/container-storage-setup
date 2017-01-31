@@ -28,6 +28,7 @@ EOF
 
   # dss failed
   if [ $? -ne 0 ]; then 
+    echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
     cleanup $vg_name "$devs"
     return $test_status
   fi
@@ -45,7 +46,11 @@ EOF
   echo $DOCKER_STORAGE_OPTIONS | grep -q -- "$extra_options"
   
   # Successful appending to DOCKER_STORAGE_OPTIONS
-  [ $? -eq 0 ] && test_status=0
+  if [ $? -eq 0 ]; then
+    test_status=0
+  else
+    echo "ERROR: $testname: failed DOCKER_STORAGE_OPTIONS ${DOCKER_STORAGE_OPTIONS} does not include extra_options ${extra_options}." >> $LOGS
+  fi
 
   cleanup $vg_name "$devs"
   return $test_status 

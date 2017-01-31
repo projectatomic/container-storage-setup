@@ -22,20 +22,19 @@ EOF
  $DSSBIN --reset >> $LOGS 2>&1
  if [ $? -ne 0 ]; then
     # Test failed.
+    echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
     test_status=1
  elif [ -e /etc/sysconfig/docker-storage ]; then
     # Test failed.
+    echo "ERROR: $testname: $DSSBIN --reset Failed to cleanup /etc/sysconfig/docker." >> $LOGS
     test_status=1
  fi
-  if [ ${test_status} -eq 1 ]; then
-    echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
-  fi
 
  clean_config_files
  return $test_status
 }
 
-# Create a overlay docker backend and then make sure the
+# Create a overlay backend and then make sure the
 # docker-storage-setup --reset
 # cleans it up properly.
 test_reset_overlay

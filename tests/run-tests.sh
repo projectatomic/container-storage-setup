@@ -1,7 +1,7 @@
 #!/bin/bash
 
 WORKDIR=$(pwd)/temp/
-DOCKER_METADATA_DIR=/var/lib/docker
+METADATA_DIR=/var/lib/docker
 export DSSBIN="/usr/bin/docker-storage-setup"
 export LOGS=$WORKDIR/logs.txt
 
@@ -22,11 +22,11 @@ check_docker_active() {
 
 # Check metadata if using devmapper
 check_metadata() {
-  local docker_devmapper_meta_dir="$DOCKER_METADATA_DIR/devicemapper/metadata/"
+  local devmapper_meta_dir="$METADATA_DIR/devicemapper/metadata/"
   
-  [ ! -d "$docker_devmapper_meta_dir" ] && return 0
+  [ ! -d "$devmapper_meta_dir" ] && return 0
 
-  echo "ERROR: /var/lib/docker directory exists and contains old metadata. Remove it." >&2
+  echo "ERROR: ${METADATA_DIR} directory exists and contains old metadata. Remove it." >&2
   exit 1
 }
 
