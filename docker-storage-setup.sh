@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #--
-# Copyright 2014-2016 Red Hat, Inc.
+# Copyright 2014-2017 Red Hat, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,52 +16,23 @@
 # limitations under the License.
 #++
 
-#  Purpose:  This script grows the root filesystem and sets up LVM volumes
-#            for docker metadata and data.
+#  Purpose:  This script sets up the storage for container runtimes.
 #  Author:   Andy Grimm <agrimm@redhat.com>
 
 set -e
 
 # This section reads the config file /etc/sysconfig/docker-storage-setup
-# Currently supported options:
-# DEVS: A quoted, space-separated list of devices to be used.  This currently
-#       expects the devices to be unpartitioned drives.  If "VG" is not
-#       specified, then use of the root disk's extra space is implied.
-#
-# VG:   The volume group to use for docker storage.  Defaults to the volume
-#       group where the root filesystem resides.  If VG is specified and the
-#       volume group does not exist, it will be created (which requires that
-#       "DEVS" be nonempty, since we don't currently support putting a second
-#       partition on the root disk).
-#
-# The options below should be specified as values acceptable to 'lvextend -L':
-#
-# ROOT_SIZE: The size to which the root filesystem should be grown.
-#
-# DATA_SIZE: The desired size for the docker data LV.  Defaults to using all
-#            free space in the VG after the root LV and docker metadata LV
-#            have been allocated/grown.
-#
-# Other possibilities:
-# * Support lvm raid setups for docker data?  This would not be very difficult
-#   if given multiple PVs and another variable; options could be just a simple
-#   "mirror" or "stripe", or something more detailed.
+# Read man page for a description of currently supported options:
+# 'man docker-storage-setup'
 
-# In lvm thin pool, effectively data LV is named as pool LV. lvconvert
-# takes the data lv name and uses it as pool lv name. And later even to
-# resize the data lv, one has to use pool lv name. So name data lv
-# appropriately.
-#
-# Note: lvm2 version should be same or higher than lvm2-2.02.112 for lvm
-#       thin pool functionality to work properly.
 POOL_LV_NAME="docker-pool"
 DOCKER_ROOT_LV_NAME="docker-root-lv"
 DOCKER_ROOT_DIR="/var/lib/docker"
-
-DOCKER_STORAGE="/etc/sysconfig/docker-storage"
-STORAGE_DRIVERS="devicemapper overlay overlay2"
-
 DOCKER_METADATA_DIR="/var/lib/docker"
+DOCKER_ROOT_VOLUME_SIZE=40%FREE
+
+STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
+STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 PIPE1=/run/dss-fifo1
 PIPE2=/run/dss-fifo2
@@ -71,7 +42,7 @@ TEMPDIR=$(mktemp --tmpdir -d)
 # paths and save in ABS_DEVS and use in rest of the code.
 DEVS_ABS=""
 
-# Will have currently configured storage options in $DOCKER_STORAGE
+# Will have currently configured storage options in ${STORAGE_OUT_FILE}
 CURRENT_STORAGE_OPTIONS=""
 
 get_docker_version() {
@@ -234,16 +205,15 @@ get_config_options() {
 
 write_storage_config_file () {
   local storage_options
-
   if ! storage_options=$(get_config_options $STORAGE_DRIVER); then
       return 1
   fi
 
-  cat <<EOF > $DOCKER_STORAGE.tmp
+  cat <<EOF > ${STORAGE_OUT_FILE}.tmp
 $storage_options
 EOF
 
-  mv -Z $DOCKER_STORAGE.tmp $DOCKER_STORAGE
+  mv -Z ${STORAGE_OUT_FILE}.tmp ${STORAGE_OUT_FILE}
 }
 
 convert_size_in_bytes() {
@@ -457,14 +427,13 @@ reset_lvm_thin_pool () {
 
 setup_lvm_thin_pool () {
   local tpool
-
   # Check if a thin pool is already configured in /etc/sysconfig/docker-storage.
   # If yes, wait for that thin pool to come up.
   tpool=`get_configured_thin_pool`
 
   if [ -n "$tpool" ]; then
      local escaped_pool_lv_name=`echo $POOL_LV_NAME | sed 's/-/--/g'`
-     Info "Found an already configured thin pool $tpool in ${DOCKER_STORAGE}"
+     Info "Found an already configured thin pool $tpool in ${STORAGE_OUT_FILE}"
 
      # dss generated thin pool device name starts with /dev/mapper/ and
      # ends with POOL_LV_NAME
@@ -473,7 +442,7 @@ setup_lvm_thin_pool () {
      fi
 
      if ! wait_for_dev "$tpool"; then
-       Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${DOCKER_STORAGE} and retry"
+       Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${STORAGE_OUT_FILE} and retry"
      fi
   fi
 
@@ -492,8 +461,8 @@ setup_lvm_thin_pool () {
   else
     # At this point /etc/sysconfig/docker-storage file should exist. If user
     # deleted this file accidently without deleting thin pool, recreate it.
-    if [ ! -f "$DOCKER_STORAGE" ];then
-      Info "$DOCKER_STORAGE file is missing. Recreating it."
+    if [ ! -f "${STORAGE_OUT_FILE}" ];then
+      Info "${STORAGE_OUT_FILE} file is missing. Recreating it."
       write_storage_config_file
     fi
   fi
@@ -530,11 +499,11 @@ lvm_pool_exists() {
 # dm.datadev or dm.metadatadev entries, that means we have used old mode
 # in the past.
 is_old_data_meta_mode() {
-  if [ ! -f "$DOCKER_STORAGE" ];then
+  if [ ! -f "${STORAGE_OUT_FILE}" ];then
     return 1
   fi
 
-  if ! grep -e "^DOCKER_STORAGE_OPTIONS=.*dm\.datadev" -e "^DOCKER_STORAGE_OPTIONS=.*dm\.metadatadev" $DOCKER_STORAGE  > /dev/null 2>&1;then
+  if ! grep -e "^DOCKER_STORAGE_OPTIONS=.*dm\.datadev" -e "^DOCKER_STORAGE_OPTIONS=.*dm\.metadatadev" ${STORAGE_OUT_FILE}  > /dev/null 2>&1;then
     return 1
   fi
 
@@ -828,11 +797,11 @@ disable_auto_pool_extension() {
 get_docker_storage_options() {
   local options
 
-  if [ ! -f "$DOCKER_STORAGE" ];then
+  if [ ! -f "${STORAGE_OUT_FILE}" ];then
     return 0
   fi
 
-  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" $DOCKER_STORAGE | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
+  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" ${STORAGE_OUT_FILE} | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
     echo $options
     return 0
   fi
@@ -1059,12 +1028,12 @@ setup_storage() {
 
   # If storage is configured and new driver should match old one.
   if [ -n "$current_driver" ] && [ "$current_driver" != "$STORAGE_DRIVER" ];then
-   Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove $DOCKER_STORAGE and retry."
+   Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove ${STORAGE_OUT_FILE} and retry."
   fi
 
   # If a user decides to setup (a) and (b)/(c):
   # a) lvm thin pool for devicemapper.
-  # b) a separate volume for docker root.
+  # b) a separate volume for container runtime root.
   # c) a separate named ($CONTAINER_ROOT_LV_NAME) volume for $CONTAINER_ROOT_LV_MOUNT_PATH.
   # (a) will be setup first, followed by (b) or (c).
 
@@ -1075,7 +1044,7 @@ setup_storage() {
       write_storage_config_file
   fi
 
-  # If docker root is on a separate volume, setup that.
+  # If container root is on a separate volume, setup that.
   if ! setup_docker_root_lv_fs; then
     Error "Failed to setup docker root volume."
     return 1
@@ -1164,14 +1133,14 @@ reset_storage() {
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     reset_lvm_thin_pool
   fi
-  rm -f $DOCKER_STORAGE
+  rm -f ${STORAGE_OUT_FILE}
 }
 
 usage() {
   cat <<-FOE
     Usage: $1 [OPTIONS]
 
-    Grows the root filesystem and sets up storage for docker
+    Grows the root filesystem and sets up storage for container runtimes
 
     Options:
       --help    Print help message
