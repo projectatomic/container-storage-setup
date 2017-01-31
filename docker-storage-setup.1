@@ -1,7 +1,7 @@
 .TH "DOCKER-STORAGE-SETUP" "1" "NOVEMBER 2014" "Helper Script for Docker Storage Setup" ""
 .SH NAME
 .PP
-docker\-storage\-setup - Grows the root filesystem and sets up storage for docker.
+docker\-storage\-setup - Grows the root filesystem and sets up storage for container runtimes.
 .SH SYNOPSIS
 .PP
 \f[B]docker-storage-setup\f[] [OPTIONS]
@@ -11,11 +11,13 @@ docker\-storage\-setup - Grows the root filesystem and sets up storage for docke
   Print usage statement
 
 \f[B]--reset\f[]
-  Reset your docker storage to init state. Reset does not try to remove volume groups or try to remove any of the disks added previously.
-  
-Note: The
-\f[B]--reset\f[]
-command is not sufficient to cleanup your docker environment.  This option is used by other tools. (\f[B]atomic storage reset\f[])
+  Reset your container storage to init state. Reset does not remove
+  volume groups or remove any of the disks added previously.
+
+  Note: The \f[B]--reset\f[]
+command is not always sufficient to cleanup your
+  container runtime environment. Other tools (\f[B]atomic storage reset\f[])
+  use this command to cleanup all storage.
 
 .SH EXAMPLES
 Run \f[B]docker-storage-setup\f[] after setting up your configuration in
@@ -31,14 +33,16 @@ functionality to work properly.
 \f[B]Supported options for the configuration file\f[]:
 
 STORAGE_DRIVER:
-      Specify a storage driver to be used with docker. Default
-      driver is "devicemapper". Other valid values are overlay,
-      overlay2 and "". Empty string tells docker-storage-setup to
-      not do any storage setup.
+      Specify a storage driver to be used with container runtime.
+      Default: "devicemapper".
+      Valid values are overlay, overlay2 and "".
+      "" tells docker-storage-setup to not perform any storage setup.
 
-EXTRA_DOCKER_STORAGE_OPTIONS:
-      A set of extra options that should be passed to the Docker
-      daemon.
+EXTRA_STORAGE_OPTIONS:
+      A set of extra options that should be passed to the container
+      runtime daemon.
+      Note: EXTRA_STORAGE_OPTIONS replaces EXTRA_DOCKER_STORAGE_OPTIONS
+      which has been deprecated
 
 DEVS: A quoted, space-separated list of devices to be used.
       If a drive is partitioned and contains a ${dev}1 partition,
@@ -47,14 +51,13 @@ DEVS: A quoted, space-separated list of devices to be used.
       is not specified, then use of the root disk's extra space
       is implied.
 
-VG:   The volume group to use for docker storage.  Defaults to the
+VG:   The volume group to use for container storage.  Defaults to the
       volume group where the root filesystem resides.  If VG is
       specified and the volume group does not exist, it will be
       created (which requires that "DEVS" be nonempty, since we don't
       currently support putting a second partition on the root disk).
 
-      lvm2 version should be same or higher than lvm2-2.02.112 for lvm
-      thin pool functionality to work properly.
+Note: lvm2 needs to be lvm2-2.02.112 or later for lvm thin pool functionality to work properly.
 
 GROWPART:
       One can use this option to enable/disable growing of partition
@@ -79,16 +82,15 @@ POOL_AUTOEXTEND_PERCENT:
       pool size.
 
 CHUNK_SIZE:
-      Controls the chunk size/block size of thin pool. Value of CHUNK_SIZE
-      be suitable to be passed to --chunk-size option of lvconvert.
+      Controls the chunk size/block size of thin pool. CHUNK_SIZE value
+      must be suitable for passing to \f[B]lvconvert --chunk-size\f[].
 
 DEVICE_WAIT_TIMEOUT:
-           Specifies a device wait timeout value in seconds. In
-           certain cases required devices might not be immediately
-           available and docker-storage-setup might decide to wait for
-           it. This timeout specifies how long one should wait for the
-           device. Default is 60 seconds. One can disable the wait by
-           specifying a value of 0.
+      Specifies a device wait timeout value in seconds. In certain
+      cases required devices might not be immediately available and
+      docker-storage-setup might decide to wait for it. This timeout
+      specifies how long one should wait for the device.
+      Default is 60 seconds. 0 disables wait.
 
 WIPE_SIGNATURES:
       Wipe any signatures found on disk. Valid values are
@@ -98,43 +100,6 @@ WIPE_SIGNATURES:
       overwritten as suitable. This also means that if there is any
       data on disk, it will be lost.
 
-DOCKER_ROOT_VOLUME:
-      By default no new volume and filesystem will be setup
-      for docker root dir. Docker creates /var/lib/docker/ on
-      top of underlying filesystem for storing images and containers.
-
-      To carve out a separate logical volume for storing docker
-      images/containers/volumes data, set DOCKER_ROOT_VOLUME=yes
-
-      docker-storage-setup creates a logical volume with an XFS
-      filesystem mounted on docker root directory
-      (default: /var/lib/docker).
-
-      Note: DOCKER_ROOT_VOLUME is deprecated, and will be removed
-      soon. Use CONTAINER_ROOT_LV_MOUNT_PATH instead.
-
-      Note: A user cannot specify DOCKER_ROOT_VOLUME and
-      CONTAINER_ROOT_LV_MOUNT_PATH together. They are mutually exclusive
-      options.
-
-DOCKER_ROOT_VOLUME_SIZE:
-      Specify the desired size for docker root volume. It defaults
-      to 40% of all free space.
-
-      DOCKER_ROOT_VOLUME_SIZE can take values acceptable to
-      "lvcreate -L" as well as some values acceptable to to 
-      "lvcreate -l". If user intends to pass values acceptable 
-      to "lvcreate -l", then only those values which contains "%" 
-      in syntax are acceptable.  If value does not contain "%" it 
-      is assumed value is suitable for "lvcreate -L".
-
-      Note: If both STORAGE_DRIVER=devicemapper and
-      DOCKER_ROOT_VOLUME=yes is set, docker-storage-setup would set
-      up the thin pool for devicemapper first, followed by docker 
-      root volume. e.g if free space in the volume group is 10G, 
-      devicemapper thin pool size would be 4G (40% of 10G) and docker
-      root volume would be 2.4G (40% of 6G).
-
 CONTAINER_ROOT_LV_NAME:
      Name of the logical volume that will be mounted on
      CONTAINER_ROOT_LV_MOUNT_PATH. If a user is setting
@@ -142,23 +107,27 @@ CONTAINER_ROOT_LV_NAME:
      CONTAINER_ROOT_LV_NAME.
 
 CONTAINER_ROOT_LV_MOUNT_PATH:
-     Creates a logical volume named $CONTAINER_ROOT_LV_NAME
-     and mount it on $CONTAINER_ROOT_LV_MOUNT_PATH. By default
-     no new logical volume will be created. e.g. Specifying
-     CONTAINER_ROOT_LV_MOUNT_PATH=/var/lib/containers will carve
-     out a logical volume, create a filesystem on it and
-     mount it on /var/lib/containers.
+     Creates a logical volume named CONTAINER_ROOT_LV_NAME and mounts
+     it at the specified path. By default no new logical volume will
+     be created. For example:
+     \f[B]CONTAINER_ROOT_LV_MOUNT_PATH=/var/lib/containers\f[]
+     would carve out a logical volume, format it with an XFS filesystem
+     and mount it on /var/lib/containers.
+
+     Note: DOCKER_ROOT_VOLUME is deprecated. Specifying
+     DOCKER_ROOT_VOLUME and CONTAINER_ROOT_LV_MOUNT_PATH at the same
+     time is not allowed.
 
 CONTAINER_ROOT_LV_SIZE:
      Specify the desired size for CONTAINER_ROOT_LV_MOUNT_PATH
      root volume. It defaults to 40% of all free space.
 
      CONTAINER_ROOT_LV_SIZE can take values acceptable to
-     "lvcreate -L" as well as some values acceptable to
-     "lvcreate -l". If user intends to pass values acceptable
-     to "lvcreate -l", then only those values which contains "%"
+     \f[B]lvcreate -L\f[] as well as some values acceptable to
+     \f[B]lvcreate -l\f[]. If user intends to pass values acceptable
+     to \f[B]lvcreate -l\f[], then only those values which contains "%"
      in syntax are acceptable.  If value does not contain "%" it
-     is assumed value is suitable for "lvcreate -L".
+     is assumed value is suitable for \f[B]lvcreate -L\f[].
 
      Note: If both STORAGE_DRIVER=devicemapper and
      CONTAINER_ROOT_LV_MOUNT_PATH is set, docker-storage-setup
@@ -168,34 +137,37 @@ CONTAINER_ROOT_LV_SIZE:
      would be 4G (40% of 10G) and extra volume would be
      2.4G (40% of 6G).
 
-The options below should be specified as values acceptable to 'lvextend -L':
+     Note: DOCKER_ROOT_VOLUME_SIZE is deprecated. Specifying
+     DOCKER_ROOT_VOLUME_SIZE and CONTAINER_ROOT_LV_SIZE at the same
+     time is not allowed.
+
+
+Options below should be specified as values acceptable to \f[B]lvextend -L\f[].
 
 ROOT_SIZE: The size to which the root filesystem should be grown.
 
-DATA_SIZE: The desired size for the docker data LV.  Defaults to using
-           40% free space in the VG after the root LV and docker
-           metadata LV have been allocated/grown.
+DATA_SIZE: The desired size for container runtime thin pool data LV.
+	Defaults: 40% free space in the VG after the root LV and container
+	runtime metadata LV have been allocated/grown.
 
-           DATA_SIZE can take values acceptable to "lvcreate -L" as
-           well as some values acceptable to "lvcreate -l". If user
-           intends to pass values acceptable to "lvcreate -l", then
-           only those values which contains "%" in syntax are
-           acceptable.  If value does not contain "%" it is assumed
-           value is suitable for "lvcreate -L".
+	DATA_SIZE can take values acceptable to \f[B]lvcreate -L\f[] as well as
+	some values acceptable to \f[B]lvcreate -l\f[]. If user intends to pass
+	values acceptable to \f[B]lvcreate -l\f[], then only those values which
+	contains "%" in syntax are acceptable.  If value does not contain
+	"%" it is assumed value is suitable for \f[B]lvcreate -L\f[].
 
-MIN_DATA_SIZE:
-           Specifies the minimum size of the data volume. If sufficient
-           free space is not available, the pool creation will fail.
+MIN_DATA_SIZE: Specifies the minimum size of the thin pool data LV. If
+	sufficient free space is not available, the pool creation will
+	fail.
 
-           Value should be a number followed by a optional suffix.
-           "bBsSkKmMgGtTpPeE" are valid suffixes. If no suffix is
-           specified then value will be considered as megabyte unit.
+	Value should be a number followed by a optional suffix.
+	"bBsSkKmMgGtTpPeE" are valid suffixes. If no suffix is specified
+	then value will be considered as megabyte unit.
 
-           Both upper and lower case suffix represent same unit of
-           size. Use suffix B for Bytes, S for sectors as 512 bytes, K
-           for kibibytes (1024 bytes), M for mebibytes
-           (1024 kibibytes), G for gibibytes, T for tebibytes, P for
-           pebibytes and E for exbibytes.
+	Both upper and lower case suffix represent same unit of size.
+	Use suffix B for Bytes, S for sectors as 512 bytes, K for
+	kibibytes (1024 bytes), M for mebibytes (1024 kibibytes), G for
+	gibibytes, T for tebibytes, P for pebibytes and E for exbibytes.
 
 \f[B]Sample\f[]
 
