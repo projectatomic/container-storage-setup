@@ -1,10 +1,24 @@
 .TH "DOCKER-STORAGE-SETUP" "1" "NOVEMBER 2014" "Helper Script for Docker Storage Setup" ""
 .SH NAME
 .PP
-docker\-storage\-setup - Grows the root filesystem and sets up storage for container runtimes.
+docker\-storage\-setup - Tool for setting up storage for container runtimes.
 .SH SYNOPSIS
 .PP
 \f[B]docker-storage-setup\f[] [OPTIONS]
+
+\f[B]docker-storage-setup\f[] [OPTIONS] INPUTFILE OUTPUTFILE
+
+.SH DESCRIPTION
+  docker-storage-setup reads INPUTFILE to create storage and generate
+  OUTPUTFILE for use by container runtimes.
+
+  Note: executing docker-storage-setup without options will default to
+  using docker config files /etc/sysconfig/docker-storage-setup for
+  input and /etc/sysconfig/docker-storage for output.
+
+  docker-storage-setup can configure multiple backends:
+  devicemapper, overlay, and overlay2.
+
 .SH OPTIONS
 .PP
 \f[B]--help\f[]
@@ -21,10 +35,10 @@ command is not always sufficient to cleanup your
 
 .SH EXAMPLES
 Run \f[B]docker-storage-setup\f[] after setting up your configuration in
-/etc/sysconfig/docker-storage-setup. One can look at
+INPUTFILE or /etc/sysconfig/docker-storage-setup. One can look at
 /usr/lib/docker-storage-setup/docker-storage-setup for various options and
 their default settings. Anything user wants to change, should be changed
-in /etc/sysconfig/docker-storage-setup. This is the file which will
+in the INPUTFILE. This is the file which will
 override any settings specified in /usr/lib/docker-storage-setup/docker-storage-setup.
 
 lvm2 version should be same or higher than lvm2-2.02.112 for lvm thin pool
@@ -171,7 +185,7 @@ MIN_DATA_SIZE: Specifies the minimum size of the thin pool data LV. If
 
 \f[B]Sample\f[]
 
-A simple, sample /etc/sysconfig/docker-storage-setup:
+A simple, sample INPUTFILE:
 
 DEVS=/dev/vdb
 
