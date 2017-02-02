@@ -31,6 +31,7 @@ DOCKER_ROOT_DIR="/var/lib/docker"
 DOCKER_METADATA_DIR="/var/lib/docker"
 DOCKER_ROOT_VOLUME_SIZE=40%FREE
 
+STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
 STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay overlay2"
 
@@ -44,6 +45,12 @@ DEVS_ABS=""
 
 # Will have currently configured storage options in ${STORAGE_OUT_FILE}
 CURRENT_STORAGE_OPTIONS=""
+
+STORAGE_OPTIONS="STORAGE_OPTIONS"
+if [ "${STORAGE_OUT_FILE}" = "/etc/sysconfig/docker-storage" ]; then
+   STORAGE_OPTIONS="DOCKER_STORAGE_OPTIONS"
+fi
+
 
 get_docker_version() {
   local version
@@ -190,7 +197,7 @@ get_devicemapper_config_options() {
     dm_fs=""
   fi
 
-  storage_options="DOCKER_STORAGE_OPTIONS=\"--storage-driver devicemapper ${dm_fs} --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string) ${EXTRA_STORAGE_OPTIONS}\""
+  storage_options="${STORAGE_OPTIONS}=\"--storage-driver devicemapper ${dm_fs} --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string) ${EXTRA_STORAGE_OPTIONS}\""
   echo $storage_options
 }
 
@@ -199,7 +206,7 @@ get_config_options() {
     get_devicemapper_config_options
     return $?
   fi
-  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver $1 ${EXTRA_STORAGE_OPTIONS}\""
+  echo "${STORAGE_OPTIONS}=\"--storage-driver $1 ${EXTRA_STORAGE_OPTIONS}\""
   return 0
 }
 
@@ -495,7 +502,7 @@ lvm_pool_exists() {
   return 1
 }
 
-# If a /etc/sysconfig/docker-storage file is present and if it contains
+# If a ${STORAGE_OUT_FILE} file is present and if it contains
 # dm.datadev or dm.metadatadev entries, that means we have used old mode
 # in the past.
 is_old_data_meta_mode() {
@@ -503,7 +510,7 @@ is_old_data_meta_mode() {
     return 1
   fi
 
-  if ! grep -e "^DOCKER_STORAGE_OPTIONS=.*dm\.datadev" -e "^DOCKER_STORAGE_OPTIONS=.*dm\.metadatadev" ${STORAGE_OUT_FILE}  > /dev/null 2>&1;then
+  if ! grep -e "^${STORAGE_OPTIONS}=.*dm\.datadev" -e "^${STORAGE_OPTIONS}=.*dm\.metadatadev" ${STORAGE_OUT_FILE}  > /dev/null 2>&1;then
     return 1
   fi
 
