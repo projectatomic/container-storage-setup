@@ -954,7 +954,7 @@ setup_extra_volume() {
 }
 
 setup_extra_lv_fs() {
-  [ -z "$CONTAINER_ROOT_LV_MOUNT_PATH" ] && [ -z "$CONTAINER_ROOT_LV_NAME" ] && return 0
+  [ -z "$RESOLVED_MOUNT_DIR_PATH" ] && return 0
   if ! setup_extra_dir $RESOLVED_MOUNT_DIR_PATH; then
     return 1
   fi
