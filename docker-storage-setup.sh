@@ -131,7 +131,7 @@ cleanup_pipes(){
 
 extra_options_has_dm_fs() {
   local option
-  for option in ${EXTRA_DOCKER_STORAGE_OPTIONS}; do
+  for option in ${EXTRA_STORAGE_OPTIONS}; do
     if grep -q "dm.fs=" <<< $option; then
       return 0
     fi
@@ -186,11 +186,11 @@ get_devicemapper_config_options() {
   done )
 
   if extra_options_has_dm_fs; then
-    # dm.fs option defined in ${EXTRA_DOCKER_STORAGE_OPTIONS}
+    # dm.fs option defined in ${EXTRA_STORAGE_OPTIONS}
     dm_fs=""
   fi
 
-  storage_options="DOCKER_STORAGE_OPTIONS=\"--storage-driver devicemapper ${dm_fs} --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string) ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
+  storage_options="DOCKER_STORAGE_OPTIONS=\"--storage-driver devicemapper ${dm_fs} --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string) ${EXTRA_STORAGE_OPTIONS}\""
   echo $storage_options
 }
 
@@ -199,7 +199,7 @@ get_config_options() {
     get_devicemapper_config_options
     return $?
   fi
-  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver $1 ${EXTRA_DOCKER_STORAGE_OPTIONS}\""
+  echo "DOCKER_STORAGE_OPTIONS=\"--storage-driver $1 ${EXTRA_STORAGE_OPTIONS}\""
   return 0
 }
 
@@ -1000,6 +1000,15 @@ check_storage_options(){
   fi
   if [ "$DOCKER_ROOT_VOLUME" == "yes" ];then
      Info "DOCKER_ROOT_VOLUME is deprecated, and will be removed soon. Use CONTAINER_ROOT_LV_MOUNT_PATH instead."
+  fi
+
+  if [ -n "${EXTRA_DOCKER_STORAGE_OPTIONS}" ]; then
+      Info "EXTRA_DOCKER_STORAGE_OPTIONS is deprecated, please use EXTRA_STORAGE_OPTIONS"
+      if [ -n "${EXTRA_STORAGE_OPTIONS}" ]; then
+	  Fatal "EXTRA_DOCKER_STORAGE_OPTIONS and EXTRA_STORAGE_OPTIONS are mutually exclusive options."
+      fi
+      EXTRA_STORAGE_OPTIONS=${EXTRA_DOCKER_STORAGE_OPTIONS}
+      unset EXTRA_DOCKER_STORAGE_OPTIONS
   fi
 }
 
