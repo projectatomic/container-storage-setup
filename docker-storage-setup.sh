@@ -21,7 +21,7 @@
 
 set -e
 
-# This section reads the config file /etc/sysconfig/docker-storage-setup
+# This section reads the config file $INPUTFILE
 # Read man page for a description of currently supported options:
 # 'man docker-storage-setup'
 
@@ -47,10 +47,6 @@ DEVS_ABS=""
 CURRENT_STORAGE_OPTIONS=""
 
 STORAGE_OPTIONS="STORAGE_OPTIONS"
-if [ "${STORAGE_OUT_FILE}" = "/etc/sysconfig/docker-storage" ]; then
-   STORAGE_OPTIONS="DOCKER_STORAGE_OPTIONS"
-fi
-
 
 get_docker_version() {
   local version
@@ -1154,7 +1150,7 @@ reset_storage() {
 
 usage() {
   cat <<-FOE
-    Usage: $1 [OPTIONS]
+    Usage: $1 [OPTIONS] INPUTFILE OUTPUTFILE
 
     Grows the root filesystem and sets up storage for container runtimes
 
@@ -1179,10 +1175,36 @@ if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
   source /usr/lib/docker-storage-setup/docker-storage-setup
 fi
 
-# If user has overridden any settings in /etc/sysconfig/docker-storage-setup
+# Main Script
+OPTS=`getopt -o h -l reset -l help -- "$@"`
+eval set -- "$OPTS"
+RESET=0
+while true ; do
+    case "$1" in
+        --reset) RESET=1; shift;;
+        -h | --help)  usage $(basename $0); exit 0;;
+        --) shift; break;;
+    esac
+done
+
+if [ $# -eq 2 ]; then
+    STORAGE_IN_FILE=$1
+    STORAGE_OUT_FILE=$2
+else
+    if [ $# -gt 0 ]; then
+	usage $(basename $0) >&2
+	exit 1
+    fi
+fi
+
+if [ "${STORAGE_OUT_FILE}" = "/etc/sysconfig/docker-storage" ]; then
+   STORAGE_OPTIONS="DOCKER_STORAGE_OPTIONS"
+fi
+
+# If user has overridden any settings in $STORAGE_IN_FILE
 # take that into account.
-if [ -e /etc/sysconfig/docker-storage-setup ]; then
-  source /etc/sysconfig/docker-storage-setup
+if [ -e ${STORAGE_IN_FILE} ]; then
+  source ${STORAGE_IN_FILE}
 fi
 
 # Populate $RESOLVED_MOUNT_DIR_PATH
@@ -1218,19 +1240,9 @@ else
   fi
 fi
 
-# Main Script
-
-if [ $# -gt 0 ]; then
-    if [ "$1" == "--help" ]; then
-	usage $(basename $0)
-	exit 0
-    elif [ "$1" == "--reset" ]; then
-	reset_storage
-	exit 0
-    else
-        usage $(basename $0) >&2
-	exit 1
-    fi
+if [ $RESET -eq 1 ]; then
+    reset_storage
+    exit 0
 fi
 
 # If there is no volume group specified or no root volume group, there is
