@@ -127,9 +127,13 @@ run_test () {
 }
 
 run_tests() {
-  local files="$SRCDIR/[0-9][0-9][0-9]-test-*"
+  if [ $# -gt 0 ]; then
+    local files=$@
+  else
+    local files="$SRCDIR/[0-9][0-9][0-9]-test-*"
+  fi
   for t in $files;do
-    run_test $t
+    run_test ./$t
   done
 }
 
@@ -147,11 +151,31 @@ fi
 
 source $SRCDIR/libtest.sh
 
+usage() {
+  cat <<-FOE
+    Usage: $1 [OPTIONS] [ test1, test2, ... ]
+
+    Run Container Storage tests
+
+    If you specify no tests to run, all tests will run.
+
+    Options:
+      --help    Print help message
+FOE
+}
+
+if [ $# -gt 0 ]; then
+    if [ "$1" == "--help" ]; then
+	usage $(basename $0)
+	exit 0
+    fi
+fi
+
 check_docker_active
 check_metadata
 check_config_files
 setup_workdir
 setup_dss_binary
 check_block_devs "$DEVS"
-run_tests
+run_tests $@
 exit $PASS_STATUS

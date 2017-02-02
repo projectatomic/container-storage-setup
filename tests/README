@@ -9,6 +9,11 @@ Configure a disk for test
 
 Run Tests
 =========
+
+Running individual tests
+# ./run-tests.sh 001-test-use-devs-to-create-thin-pool.sh 004-test-non-absolute-disk-name-support.sh
+
+Run all tests
 # ./run-tests.sh
 
 By default /usr/bin/docker-storage-setup is used for testing. For using a
