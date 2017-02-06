@@ -17,7 +17,7 @@ EOF
  # Test failed.
  if [ $? -ne 0 ]; then
     echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
-    clean_config_files $infile $outfile
+    rm -f $infile $outfile
     return 1
  fi
 
@@ -32,7 +32,7 @@ EOF
     test_status=1
  fi
 
- clean_config_files $infile $outfile
+ rm -f $infile $outfile
  return $test_status
 }
 

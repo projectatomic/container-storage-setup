@@ -17,13 +17,13 @@ EOF
  # Test failed.
  if [ $? -ne 0 ]; then
     echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
-    clean_config_files $infile $outfile
+    rm -f $infile $outfile
     return 1
  fi
 
  if ! grep -q "overlay2" /etc/sysconfig/docker-storage; then
     echo "ERROR: $testname: /etc/sysconfig/docker-storage does not have string overlay2." >> $LOGS
-    clean_config_files $infile $outfile
+    rm -f $infile $outfile
     return 1
  fi
 
@@ -38,7 +38,7 @@ EOF
     echo "ERROR: $testname: $DSSBIN /etc/sysconfig/docker-storage still exists." >> $LOGS
  fi
 
- clean_config_files $infile $outfile
+ rm -f $infile $outfile
  return $test_status
 }
 

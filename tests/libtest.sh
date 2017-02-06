@@ -20,11 +20,6 @@ lv_exists() {
   return 1
 }
 
-clean_config_files() {
-  rm -f $1
-  rm -f $2
-}
-
 remove_pvs() {
   local dev devs=$1
   # Assume $dev1 is pv to remove.
@@ -86,7 +81,7 @@ cleanup() {
   # cases it has been observed that udev rule kept the device
   # busy.
   udevadm settle
-  clean_config_files $infile $outfile
+  rm -f $infile $outfile
   wipe_signatures "$devs"
 }
 
