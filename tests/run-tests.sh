@@ -1,6 +1,6 @@
 #!/bin/bash
 
-WORKDIR=$(pwd)/temp/
+export WORKDIR=$(pwd)/temp/
 METADATA_DIR=/var/lib/docker
 export DSSBIN="/usr/bin/docker-storage-setup"
 export LOGS=$WORKDIR/logs.txt

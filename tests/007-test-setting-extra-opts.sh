@@ -49,7 +49,7 @@ EOF
   if [ $? -eq 0 ]; then
     test_status=0
   else
-    echo "ERROR: $testname: failed DOCKER_STORAGE_OPTIONS ${DOCKER_STORAGE_OPTIONS} does not include extra_options ${extra_options}." >> $LOGS
+    echo "ERROR: $testname: failed. DOCKER_STORAGE_OPTIONS ${DOCKER_STORAGE_OPTIONS} does not include extra_options ${extra_options}." >> $LOGS
   fi
 
   cleanup $vg_name "$devs"

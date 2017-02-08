@@ -4,6 +4,8 @@ source $SRCDIR/libtest.sh
 test_reset_overlay2() {
   local test_status=0
   local testname=`basename "$0"`
+  local infile=/etc/sysconfig/docker-storage-setup
+  local outfile=/etc/sysconfig/docker-storage
 
   cat << EOF > /etc/sysconfig/docker-storage-setup
 STORAGE_DRIVER=overlay2
@@ -15,13 +17,13 @@ EOF
  # Test failed.
  if [ $? -ne 0 ]; then
     echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
-    clean_config_files
+    clean_config_files $infile $outfile
     return 1
  fi
 
  if ! grep -q "overlay2" /etc/sysconfig/docker-storage; then
     echo "ERROR: $testname: /etc/sysconfig/docker-storage does not have string overlay2." >> $LOGS
-    clean_config_files
+    clean_config_files $infile $outfile
     return 1
  fi
 
@@ -36,7 +38,7 @@ EOF
     echo "ERROR: $testname: $DSSBIN /etc/sysconfig/docker-storage still exists." >> $LOGS
  fi
 
- clean_config_files
+ clean_config_files $infile $outfile
  return $test_status
 }
 

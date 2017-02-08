@@ -21,8 +21,8 @@ lv_exists() {
 }
 
 clean_config_files() {
-  rm -f /etc/sysconfig/docker-storage-setup
-  rm -f /etc/sysconfig/docker-storage
+  rm -f $1
+  rm -f $2
 }
 
 remove_pvs() {
@@ -71,6 +71,13 @@ wipe_signatures() {
 cleanup() {
   local vg_name=$1
   local devs=$2
+  local infile=/etc/sysconfig/docker-storage-setup
+  local outfile=/etc/sysconfig/docker-storage
+  if [ $# -eq 4 ]; then
+    infile=$3
+    outfile=$4
+  fi
+
 
   vgremove -y $vg_name >> $LOGS 2>&1
   remove_pvs "$devs"
@@ -79,7 +86,7 @@ cleanup() {
   # cases it has been observed that udev rule kept the device
   # busy.
   udevadm settle
-  clean_config_files
+  clean_config_files $infile $outfile
   wipe_signatures "$devs"
 }
 

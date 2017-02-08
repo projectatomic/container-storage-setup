@@ -4,35 +4,35 @@ source $SRCDIR/libtest.sh
 test_reset_overlay() {
   local test_status=0
   local testname=`basename "$0"`
-  local infile=/etc/sysconfig/docker-storage-setup
-  local outfile=/etc/sysconfig/docker-storage
+  local infile=${WORKDIR}/container-storage-setup
+  local outfile=${WORKDIR}/container-storage
 
-  cat << EOF > ${infile}
+  cat << EOF > $infile
 STORAGE_DRIVER=overlay
 EOF
 
  # Run docker-storage-setup
- $DSSBIN >> $LOGS 2>&1
+ $DSSBIN $infile $outfile >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
-    clean_config_files $infile $outfile
+    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
+    rm -f $infile $outfile
     return 1
  fi
 
- $DSSBIN --reset >> $LOGS 2>&1
+ $DSSBIN --reset $infile $outfile >> $LOGS 2>&1
  if [ $? -ne 0 ]; then
     # Test failed.
-    echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
     test_status=1
- elif [ -e /etc/sysconfig/docker-storage ]; then
+ elif [ -e $outfile ]; then
     # Test failed.
-    echo "ERROR: $testname: $DSSBIN --reset Failed to cleanup /etc/sysconfig/docker." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN --reset $infile $outfile failed to remove $outfile." >> $LOGS
     test_status=1
  fi
 
- clean_config_files $infile $outfile
+ rm -f $infile $outfile
  return $test_status
 }
 
