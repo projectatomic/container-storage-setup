@@ -16,7 +16,7 @@ EOF
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
     clean_config_files $infile $outfile
     return 1
  fi
@@ -31,7 +31,7 @@ EOF
  if [ $? -ne 0 ]; then
     # Test failed.
     test_status=1
-    echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
  elif [ -e /etc/sysconfig/docker-storage ]; then
     # Test failed.
     test_status=1

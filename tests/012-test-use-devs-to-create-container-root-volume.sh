@@ -29,7 +29,7 @@ EOF
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
     cleanup_all $vg_name $root_lv_name $root_lv_mount_path "$devs"
     return $test_status
  fi

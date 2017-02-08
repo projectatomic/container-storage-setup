@@ -28,7 +28,7 @@ EOF
 
   # dss failed
   if [ $? -ne 0 ]; then 
-    echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
     cleanup $vg_name "$devs"
     return $test_status
   fi

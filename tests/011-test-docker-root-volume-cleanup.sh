@@ -28,7 +28,7 @@ EOF
 
   # Test failed.
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
     cleanup_all $vg_name $docker_root_lv_name $mount_path "$devs"
     return $test_status
   fi
@@ -36,7 +36,7 @@ EOF
   $DSSBIN --reset >> $LOGS 2>&1
   # Test failed.
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
     cleanup_all $vg_name $docker_root_lv_name $mount_path "$devs"
     return $test_status
   fi

@@ -23,7 +23,7 @@ EOF
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN Failed." >> $LOGS
+    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
     cleanup $vg_name "$devs"
     return $test_status
  fi
@@ -34,10 +34,10 @@ EOF
      if [ ! -e /etc/sysconfig/docker-storage ]; then
           test_status=0
      else
-	  echo "ERROR: $testname: $DSSBIN Failed /etc/sysconfig/docker-storage still exists." >> $LOGS
+	  echo "ERROR: $testname: $DSSBIN failed. /etc/sysconfig/docker-storage still exists." >> $LOGS
      fi
   else
-     echo "ERROR: $testname: $DSSBIN --reset Failed." >> $LOGS
+     echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
   fi
 
   cleanup $vg_name "$devs"
