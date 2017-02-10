@@ -25,7 +25,6 @@ set -e
 # Read man page for a description of currently supported options:
 # 'man docker-storage-setup'
 
-POOL_LV_NAME="docker-pool"
 DOCKER_ROOT_LV_NAME="docker-root-lv"
 DOCKER_ROOT_DIR="/var/lib/docker"
 DOCKER_METADATA_DIR="/var/lib/docker"
@@ -183,7 +182,7 @@ get_devicemapper_config_options() {
   # docker expects device mapper device and not lvm device. Do the conversion.
   eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
     eval $line
-    if [ "$LVM2_LV_NAME" = "$POOL_LV_NAME" ]; then
+    if [ "$LVM2_LV_NAME" = "$CONTAINER_THINPOOL" ]; then
       echo POOL_DEVICE_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
     fi
   done )
@@ -321,6 +320,10 @@ check_min_data_size_condition() {
 }
 
 create_lvm_thin_pool () {
+  if [ "$STORAGE_DRIVER" == "devicemapper" ] && [ -z "$CONTAINER_THINPOOL" ];then
+     Fatal "CONTAINER_THINPOOL must be defined for the devicemapper storage driver."
+  fi
+
   if [ -z "$DEVS_ABS" ] && [ -z "$VG_EXISTS" ]; then
     Fatal "Specified volume group $VG does not exist, and no devices were specified"
   fi
@@ -354,7 +357,7 @@ create_lvm_thin_pool () {
     DATA_SIZE_ARG="-L $DATA_SIZE"
   fi
 
-  lvcreate -y --type thin-pool --zero n $CHUNK_SIZE_ARG --poolmetadatasize ${META_SIZE}s $DATA_SIZE_ARG -n $POOL_LV_NAME $VG
+  lvcreate -y --type thin-pool --zero n $CHUNK_SIZE_ARG --poolmetadatasize ${META_SIZE}s $DATA_SIZE_ARG -n $CONTAINER_THINPOOL $VG
 }
 
 get_configured_thin_pool() {
@@ -422,9 +425,10 @@ reset_extra_volume () {
 }
 
 reset_lvm_thin_pool () {
-  if lvm_pool_exists; then
-      lvchange -an $VG/${POOL_LV_NAME}
-      lvremove $VG/${POOL_LV_NAME}
+  local thinpool_name=${CONTAINER_THINPOOL:-docker-pool}
+  if lvm_pool_exists $thinpool_name; then
+      lvchange -an $VG/${thinpool_name}
+      lvremove $VG/${thinpool_name}
   fi
 }
 
@@ -433,13 +437,14 @@ setup_lvm_thin_pool () {
   # Check if a thin pool is already configured in /etc/sysconfig/docker-storage.
   # If yes, wait for that thin pool to come up.
   tpool=`get_configured_thin_pool`
+  local thinpool_name=${CONTAINER_THINPOOL:-docker-pool}
 
   if [ -n "$tpool" ]; then
-     local escaped_pool_lv_name=`echo $POOL_LV_NAME | sed 's/-/--/g'`
+     local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
      Info "Found an already configured thin pool $tpool in ${STORAGE_OUT_FILE}"
 
      # dss generated thin pool device name starts with /dev/mapper/ and
-     # ends with POOL_LV_NAME
+     # ends with $thinpool_name
      if [[ "$tpool" != /dev/mapper/*${escaped_pool_lv_name} ]];then
        Fatal "Thin pool ${tpool} does not seem to be managed by docker-storage-setup. Exiting."
      fi
@@ -457,7 +462,7 @@ setup_lvm_thin_pool () {
     VG_EXISTS=1
   fi
 
-  if ! lvm_pool_exists; then
+  if ! lvm_pool_exists $thinpool_name; then
     check_docker_storage_metadata
     create_lvm_thin_pool
     write_storage_config_file
@@ -472,15 +477,16 @@ setup_lvm_thin_pool () {
 
   # Enable or disable automatic pool extension
   if [ "$AUTO_EXTEND_POOL" == "yes" ];then
-    enable_auto_pool_extension ${VG} ${POOL_LV_NAME}
+    enable_auto_pool_extension ${VG} ${thinpool_name}
   else
-    disable_auto_pool_extension ${VG} ${POOL_LV_NAME}
+    disable_auto_pool_extension ${VG} ${thinpool_name}
   fi
 }
 
 lvm_pool_exists() {
   local lv_data
   local lvname lv lvsize
+  local thinpool_name=$1
 
   lv_data=$( lvs --noheadings -o lv_name,lv_attr --separator , $VG | sed -e 's/^ *//')
   SAVEDIFS=$IFS
@@ -488,7 +494,7 @@ lvm_pool_exists() {
   IFS=,
   read lvname lvattr <<< "$lv"
     # pool logical volume has "t" as first character in its attributes
-    if [ "$lvname" == "$POOL_LV_NAME" ] && [[ $lvattr == t* ]]; then
+    if [ "$lvname" == "$thinpool_name" ] && [[ $lvattr == t* ]]; then
       IFS=$SAVEDIFS
       return 0
     fi
@@ -1187,15 +1193,19 @@ while true ; do
     esac
 done
 
-if [ $# -eq 2 ]; then
-    STORAGE_IN_FILE=$1
-    STORAGE_OUT_FILE=$2
-else
-    if [ $# -gt 0 ]; then
+case $# in
+    0)
+	CONTAINER_THINPOOL=docker-pool
+	;;
+    2)
+	STORAGE_IN_FILE=$1
+	STORAGE_OUT_FILE=$2
+	;;
+    *)
 	usage $(basename $0) >&2
 	exit 1
-    fi
-fi
+	;;
+esac
 
 if [ "${STORAGE_OUT_FILE}" = "/etc/sysconfig/docker-storage" ]; then
    STORAGE_OPTIONS="DOCKER_STORAGE_OPTIONS"

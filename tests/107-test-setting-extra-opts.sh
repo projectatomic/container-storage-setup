@@ -23,6 +23,7 @@ test_set_extra_opts() {
 DEVS="$devs"
 VG=$vg_name
 EXTRA_STORAGE_OPTIONS="$extra_options"
+CONTAINER_THINPOOL=container-thinpool
 EOF
 
   # Run docker-storage-setup

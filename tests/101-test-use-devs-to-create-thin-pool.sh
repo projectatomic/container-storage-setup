@@ -19,6 +19,7 @@ test_devs() {
   cat << EOF > $infile
 DEVS="$devs"
 VG=$vg_name
+CONTAINER_THINPOOL=container-thinpool
 EOF
 
  # Run docker-storage-setup

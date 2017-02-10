@@ -25,6 +25,7 @@ DEVS="$devs"
 VG=$vg_name
 CONTAINER_ROOT_LV_NAME=$root_lv_name
 CONTAINER_ROOT_LV_MOUNT_PATH=$root_lv_mount_path
+CONTAINER_THINPOOL=container-thinpool
 EOF
 
   # Run docker-storage-setup

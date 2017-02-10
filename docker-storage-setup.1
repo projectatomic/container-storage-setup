@@ -52,6 +52,12 @@ STORAGE_DRIVER:
       Valid values are overlay, overlay2 and "".
       "" tells docker-storage-setup to not perform any storage setup.
 
+CONTAINER_THINPOOL:
+      Specify the thinpool name for the lvm thinpool. This is required
+      when using the devicemapper STORAGE_DRIVER.  CONTAINER_THINPOOL
+      is logical volume name passed to \f[B]lvcreate\f[] when creating
+      the thin pool volume.
+
 EXTRA_STORAGE_OPTIONS:
       A set of extra options that should be passed to the container
       runtime daemon.

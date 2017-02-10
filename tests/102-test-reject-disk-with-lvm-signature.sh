@@ -19,6 +19,7 @@ test_lvm_sig() {
   cat << EOF > ${infile}
 DEVS="$devs"
 VG=$vg_name
+CONTAINER_THINPOOL=container-thinpool
 EOF
 
   # create lvm signatures on disks

@@ -18,6 +18,7 @@ test_override_signatures() {
 DEVS="$devs"
 VG=$vg_name
 WIPE_SIGNATURES=true
+CONTAINER_THINPOOL=container-thinpool
 EOF
 
   # create lvm signatures on disks
