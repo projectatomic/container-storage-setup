@@ -31,13 +31,19 @@ EOF
   $DSSBIN --reset >> $LOGS 2>&1
   # Test failed.
   if [ $? -eq 0 ]; then
-     if [ ! -e /etc/sysconfig/docker-storage ]; then
-          test_status=0
+     if [ -e /etc/sysconfig/docker-storage ]; then
+	 echo "ERROR: $testname: $DSSBIN failed. /etc/sysconfig/docker-storage still exists." >> $LOGS
      else
-	  echo "ERROR: $testname: $DSSBIN failed. /etc/sysconfig/docker-storage still exists." >> $LOGS
+	 if lv_exists $vg_name "docker-pool"; then
+	     echo "ERROR: $testname: Thin pool docker-pool still exists." >> $LOGS
+	 else
+	     test_status=0
+	 fi
      fi
-  else
-     echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
+  fi
+
+  if [ $test_status -ne 0 ]; then
+      echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
   fi
 
   cleanup $vg_name "$devs"
