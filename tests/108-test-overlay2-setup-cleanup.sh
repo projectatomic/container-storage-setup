@@ -1,6 +1,6 @@
 source $SRCDIR/libtest.sh
 
-# Test "docker-storage-setup reset". Returns 0 on success and 1 on failure.
+# Test "container-storage-setup --reset". Returns 0 on success and 1 on failure.
 test_reset_overlay2() {
   local test_status=0
   local testname=`basename "$0"`
@@ -11,7 +11,7 @@ test_reset_overlay2() {
 STORAGE_DRIVER=overlay2
 EOF
 
- # Run docker-storage-setup
+ # Run container-storage-setup
  $DSSBIN $infile $outfile >> $LOGS 2>&1
 
  # Test failed.
@@ -43,6 +43,6 @@ EOF
 }
 
 # Create a overlay2 backend and then make sure the
-# docker-storage-setup --reset
+# container-storage-setup --reset
 # cleans it up properly.
 test_reset_overlay2

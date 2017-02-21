@@ -1,6 +1,6 @@
 Configure a disk for test
 =========================
-- Add following line to file dss-test-config
+- Add following line to file css-test-config
 
   DEVS=/dev/sdb
 
@@ -16,10 +16,10 @@ Running individual tests
 Run all tests
 # ./run-tests.sh
 
-By default /usr/bin/docker-storage-setup is used for testing. For using a
-different binary, define environment variable DOCKER_STORAGE_SETUP.
+By default /usr/bin/container-storage-setup is used for testing. For using a
+different binary, define environment variable CONTAINER_STORAGE_SETUP.
 
-DOCKER_STORAGE_SETUP=../docker-storage-setup.sh ./run-tests.sh
+CONTAINER_STORAGE_SETUP=../container-storage-setup.sh ./run-tests.sh
 
 NOTES:
 All tests between 0 and 100 are there for compatibility with docker. These

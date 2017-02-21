@@ -22,7 +22,7 @@ VG=$vg_name
 CONTAINER_THINPOOL=container-thinpool
 EOF
 
- # Run docker-storage-setup
+ # Run container-storage-setup
  $DSSBIN $infile $outfile >> $LOGS 2>&1
 
  # Test failed.

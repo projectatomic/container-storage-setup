@@ -7,7 +7,7 @@ test_devs() {
   local testname=`basename "$0"`
   local vg_name="dss-test-foo"
   
-  # Error out if any pre-existing volume group vg named dss-test-foo  
+  # Error out if any pre-existing volume group vg named dss-test-foo
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
     return $test_status
@@ -19,7 +19,7 @@ DEVS="$devs"
 VG=$vg_name
 EOF
 
- # Run docker-storage-setup
+ # Run container-storage-setup
  $DSSBIN >> $LOGS 2>&1
 
  # Test failed.

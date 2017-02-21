@@ -1,3 +1,0 @@
-# This is config file used by dss tests.
-# DEVS specifies the device path which should be used to run tests. Ex. /dev/sdb
-#DEVS=/dev/sdb

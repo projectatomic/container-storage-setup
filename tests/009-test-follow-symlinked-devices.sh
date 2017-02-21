@@ -24,7 +24,7 @@ test_follow_symlinked_devices() {
 DEVS="$devs"
 VG=$vg_name
 EOF
-  # Run docker-storage-setup
+  # Run container-storage-setup
   $DSSBIN >> $LOGS 2>&1
 
   # Test failed.

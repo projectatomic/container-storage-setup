@@ -1,6 +1,6 @@
 source $SRCDIR/libtest.sh
 
-# Test "docker-storage-setup --reset" for CONTAINER_ROOT_LV_NAME=
+# Test "container-storage-setup --reset" for CONTAINER_ROOT_LV_NAME=
 # and CONTAINER_ROOT_LV_MOUNT_PATH= directives.
 # Returns 0 on success and 1 on failure.
 test_reset_container_root_volume() {
@@ -25,7 +25,7 @@ CONTAINER_ROOT_LV_NAME=$root_lv_name
 CONTAINER_ROOT_LV_MOUNT_PATH=$root_lv_mount_path
 EOF
 
-  # Run docker-storage-setup
+  # Run container-storage-setup
   $DSSBIN >> $LOGS 2>&1
 
   # Test failed.
@@ -82,8 +82,8 @@ cleanup_all(){
 
 # If a user has specified CONTAINER_ROOT_LV_NAME="container-root-lv"
 # and CONTAINER_ROOT_LV_MOUNT_PATH="/var/lib/containers", then
-# docker-storage-setup would create a logical volume named
+# container-storage-setup would create a logical volume named
 # "container-root-lv" and mount it on "/var/lib/containers".
-# This function tests if `docker-storage-setup --reset`
+# This function tests if `container-storage-setup --reset`
 # cleans it up properly.
 test_reset_container_root_volume

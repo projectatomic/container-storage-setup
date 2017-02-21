@@ -24,7 +24,7 @@ CONTAINER_ROOT_LV_NAME=$root_lv_name
 CONTAINER_ROOT_LV_MOUNT_PATH=$root_lv_mount_path
 EOF
 
- # Run docker-storage-setup
+ # Run container-storage-setup
  $DSSBIN >> $LOGS 2>&1
 
  # Test failed.
@@ -73,7 +73,7 @@ cleanup_all(){
 # This test will check if a user set
 # CONTAINER_ROOT_LV_NAME="container-root-lv" and
 # CONTAINER_ROOT_LV_MOUNT_PATH="/var/lib/containers", then
-# docker-storage-setup would create a logical volume named
+# container-storage-setup would create a logical volume named
 # "container-root-lv" and mount it on "/var/lib/containers".
 test_container_root_volume
 

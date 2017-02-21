@@ -26,7 +26,7 @@ EXTRA_STORAGE_OPTIONS="$extra_options"
 CONTAINER_THINPOOL=container-thinpool
 EOF
 
-  # Run docker-storage-setup
+  # Run container-storage-setup
   $DSSBIN $infile $outfile >> $LOGS 2>&1
 
   # dss failed

@@ -1,6 +1,6 @@
 source $SRCDIR/libtest.sh
 
-# Test "docker-storage-setup --reset" for DOCKER_ROOT_VOLUME=yes.
+# Test "container-storage-setup --reset" for DOCKER_ROOT_VOLUME=yes.
 # Returns 0 on success and 1 on failure.
 test_reset_docker_root_volume() {
   local devs=${TEST_DEVS}
@@ -23,7 +23,7 @@ VG=$vg_name
 DOCKER_ROOT_VOLUME=yes
 EOF
 
-  # Run docker-storage-setup
+  # Run container-storage-setup
   $DSSBIN >> $LOGS 2>&1
 
   # Test failed.
@@ -78,8 +78,8 @@ cleanup_all(){
 }
 
 #If a user has specified DOCKER_ROOT_VOLUME=yes
-#docker-storage-setup sets up a logical volume
+#container-storage-setup sets up a logical volume
 #named "docker-root-lv" and mounts it on docker
 #root directory. This function tests if
-#`docker-storage-setup --reset` cleans it up properly.
+#`container-storage-setup --reset` cleans it up properly.
 test_reset_docker_root_volume

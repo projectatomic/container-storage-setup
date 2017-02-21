@@ -21,7 +21,7 @@ VG=$vg_name
 DOCKER_ROOT_VOLUME=yes
 EOF
 
- # Run docker-storage-setup
+ # Run container-storage-setup
  $DSSBIN >> $LOGS 2>&1
 
  # Test failed.

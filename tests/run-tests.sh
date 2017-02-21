@@ -2,7 +2,7 @@
 
 export WORKDIR=$(pwd)/temp/
 METADATA_DIR=/var/lib/docker
-export DSSBIN="/usr/bin/docker-storage-setup"
+export DSSBIN="/usr/bin/container-storage-setup"
 export LOGS=$WORKDIR/logs.txt
 
 # Keeps track of overall pass/failure status of tests. Even if single test
@@ -49,19 +49,22 @@ check_config_files() {
 }
 
 setup_dss_binary() {
-  # One can setup environment variable DOCKER_STORAGE_SETUP to override
+  # One can setup environment variable CONTAINER_STORAGE_SETUP to override
   # which binary is used for tests.
-  if [ -n "$DOCKER_STORAGE_SETUP" ];then
-    if [ ! -f "$DOCKER_STORAGE_SETUP" ];then
-      echo "Error: Executable $DOCKER_STORAGE_SETUP does not exist"
+  if [ -z "$CONTAINER_STORAGE_SETUP" -a -n "$DOCKER_STORAGE_SETUP" ];then
+      CONTAINER_STORAGE_SETUP=$DOCKER_STORAGE_SETUP
+  fi
+  if [ -n "$CONTAINER_STORAGE_SETUP" ];then
+    if [ ! -f "$CONTAINER_STORAGE_SETUP" ];then
+      echo "Error: Executable $CONTAINER_STORAGE_SETUP does not exist"
       exit 1
     fi
 
-    if [ ! -x "$DOCKER_STORAGE_SETUP" ];then
-      echo "Error: Executable $DOCKER_STORAGE_SETUP does not have execute permissions."
+    if [ ! -x "$CONTAINER_STORAGE_SETUP" ];then
+      echo "Error: Executable $CONTAINER_STORAGE_SETUP does not have execute permissions."
       exit 1
     fi
-    DSSBIN=$DOCKER_STORAGE_SETUP
+    DSSBIN=$CONTAINER_STORAGE_SETUP
   fi
   echo "INFO: Using $DSSBIN for running tests."
 }
@@ -92,7 +95,7 @@ check_block_devs() {
   local devs=$1
 
   if [ -z "$devs" ];then
-    echo "ERROR: A block device need to be specified for testing in dss-test-config file."
+    echo "ERROR: A block device need to be specified for testing in css-test-config file."
     exit 1
   fi
 
@@ -141,8 +144,8 @@ run_tests() {
 
 # Source config file
 export SRCDIR=`dirname $0`
-if [ -e $SRCDIR/dss-test-config ]; then
-  source $SRCDIR/dss-test-config
+if [ -e $SRCDIR/css-test-config ]; then
+  source $SRCDIR/css-test-config
   # DEVS is used by dss as well. So exporting this can fail any tests which
   # don't want to use DEVS. So export TEST_DEVS instead.
   TEST_DEVS=$DEVS

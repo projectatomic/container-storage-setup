@@ -19,7 +19,7 @@ test_fail_if_no_container_thinpool() {
 DEVS="$devs"
 VG=$vg_name
 EOF
-  # Run docker-storage-setup
+  # Run container-storage-setup
   $DSSBIN $infile $outfile > $tmplog 2>&1
   rc=$?
   cat $tmplog >> $LOGS 2>&1

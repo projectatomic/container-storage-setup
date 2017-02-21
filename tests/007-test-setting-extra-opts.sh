@@ -23,7 +23,7 @@ VG=$vg_name
 EXTRA_DOCKER_STORAGE_OPTIONS="$extra_options"
 EOF
   
-  # Run docker-storage-setup
+  # Run container-storage-setup
   $DSSBIN >> $LOGS 2>&1 
 
   # dss failed

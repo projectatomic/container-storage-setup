@@ -1,6 +1,6 @@
 source $SRCDIR/libtest.sh
 
-# Test "docker-storage-setup reset". Returns 0 on success and 1 on failure.
+# Test "container-storage-setup --reset". Returns 0 on success and 1 on failure.
 test_reset_devmapper() {
   local devs=${TEST_DEVS}
   local test_status=1
@@ -21,7 +21,7 @@ VG=$vg_name
 CONTAINER_THINPOOL=container-thinpool
 EOF
 
- # Run docker-storage-setup
+ # Run container-storage-setup
  $DSSBIN $infile $outfile >> $LOGS 2>&1
 
  # Test failed.
@@ -59,6 +59,6 @@ EOF
 }
 
 # Create a devicemapper docker backend and then make sure the
-# `docker-storage-setup --reset`
+# `container-storage-setup --reset`
 # cleans it up properly.
 test_reset_devmapper

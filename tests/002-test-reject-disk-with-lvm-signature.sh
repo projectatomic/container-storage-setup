@@ -24,7 +24,7 @@ EOF
     pvcreate -f $dev >> $LOGS 2>&1
   done
 
-  # Run docker-storage-setup
+  # Run container-storage-setup
   $DSSBIN >> $LOGS 2>&1
 
   # Dss should fail. If it did not, then test failed. This is very crude
