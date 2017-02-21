@@ -488,6 +488,9 @@ lvm_pool_exists() {
   local lvname lv lvsize
   local thinpool_name=$1
 
+  if [ -z "$thinpool_name" ]; then
+      Fatal "Thin pool name must be specified."
+  fi
   lv_data=$( lvs --noheadings -o lv_name,lv_attr --separator , $VG | sed -e 's/^ *//')
   SAVEDIFS=$IFS
   for lv in $lv_data; do
