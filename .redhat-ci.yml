@@ -21,7 +21,7 @@ tests:
   - rm -f /etc/sysconfig/docker-storage
   - if findmnt /dev/vdb; then umount /dev/vdb; fi
   - wipefs -a /dev/vdb
-  - echo "DEVS=/dev/vdb" >> tests/dss-test-config
+  - echo "DEVS=/dev/vdb" >> tests/css-test-config
   - tests/run-tests.sh
 
 timeout: 15m

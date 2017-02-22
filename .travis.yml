@@ -8,7 +8,7 @@ addons:
       - autotools-dev
 script:
   # For now, just a syntax check.
-  - bash -n docker-storage-setup.sh
+  - bash -n container-storage-setup.sh
 
 notifications:
   webhooks: http://escher.verbum.org:54856/travis

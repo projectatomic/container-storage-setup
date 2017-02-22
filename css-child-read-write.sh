@@ -1,5 +1,5 @@
 #!/bin/bash
-# This is a helper script which is called by docker-storage-setup.sh (d-s-s).
+# This is a helper script which is called by container-storage-setup.sh (d-s-s).
 # This script helps in providing synchronization primitives to d-s-s so that
 # d-s-s can determine whether deferred deletion is supported by the underlying
 # kernel or not.

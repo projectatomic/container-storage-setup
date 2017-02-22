@@ -1,0 +1,3 @@
+# This is config file used by css tests.
+# DEVS specifies the device path which should be used to run tests. Ex. /dev/sdb
+#DEVS=/dev/sdb

@@ -23,7 +23,7 @@ set -e
 
 # This section reads the config file $INPUTFILE
 # Read man page for a description of currently supported options:
-# 'man docker-storage-setup'
+# 'man container-storage-setup'
 
 DOCKER_ROOT_LV_NAME="docker-root-lv"
 DOCKER_ROOT_DIR="/var/lib/docker"
@@ -109,12 +109,12 @@ should_enable_deferred_deletion() {
 platform_supports_deferred_deletion() {
         local deferred_deletion_supported=1
         trap cleanup_pipes EXIT
-        if [ ! -x "/usr/lib/docker-storage-setup/dss-child-read-write" ];then
+        if [ ! -x "/usr/lib/container-storage-setup/css-child-read-write" ];then
            return 1
         fi
         mkfifo $PIPE1
         mkfifo $PIPE2
-        unshare -m /usr/lib/docker-storage-setup/dss-child-read-write $PIPE1 $PIPE2 "$TEMPDIR" &
+        unshare -m /usr/lib/container-storage-setup/css-child-read-write $PIPE1 $PIPE2 "$TEMPDIR" &
         read -t 10 n <>$PIPE1
         if [ "$n" != "start" ];then
 	   return 1
@@ -457,7 +457,7 @@ setup_lvm_thin_pool () {
      # dss generated thin pool device name starts with /dev/mapper/ and
      # ends with $thinpool_name
      if [[ "$tpool" != /dev/mapper/*${escaped_pool_lv_name} ]];then
-       Fatal "Thin pool ${tpool} does not seem to be managed by docker-storage-setup. Exiting."
+       Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
      fi
 
      if ! wait_for_dev "$tpool"; then
@@ -1167,17 +1167,17 @@ FOE
 
 # Source library. If there is a library present in same dir as d-s-s, source
 # that otherwise fall back to standard library. This is useful when modifyin
-# libdss.sh in git tree and testing d-s-s.
+# libcss.sh in git tree and testing d-s-s.
 SRCDIR=`dirname $0`
 
-if [ -e $SRCDIR/libdss.sh ]; then
-  source $SRCDIR/libdss.sh
-elif [ -e /usr/lib/docker-storage-setup/libdss.sh ]; then
-  source /usr/lib/docker-storage-setup/libdss.sh
+if [ -e $SRCDIR/libcss.sh ]; then
+  source $SRCDIR/libcss.sh
+elif [ -e /usr/lib/container-storage-setup/libcss.sh ]; then
+  source /usr/lib/container-storage-setup/libcss.sh
 fi
 
-if [ -e /usr/lib/docker-storage-setup/docker-storage-setup ]; then
-  source /usr/lib/docker-storage-setup/docker-storage-setup
+if [ -e /usr/lib/container-storage-setup/container-storage-setup ]; then
+  source /usr/lib/container-storage-setup/container-storage-setup
 fi
 
 # Main Script

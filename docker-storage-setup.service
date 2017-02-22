@@ -5,7 +5,7 @@ Before=docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/docker-storage-setup /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage
+ExecStart=/usr/bin/container-storage-setup /etc/sysconfig/docker-storage-setup /etc/sysconfig/docker-storage
 EnvironmentFile=-/etc/sysconfig/docker-storage-setup
 
 [Install]
