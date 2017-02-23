@@ -395,6 +395,22 @@ systemd_escaped_filename () {
   echo $filename
 }
 
+
+#
+# In the past we created a systemd mount target file, we no longer
+# use it, but if one pre-existed we still need to handle it.
+#
+remove_systemd_mount_target () {
+  local mp=$1
+  local filename=$(systemd_escaped_filename $mp)
+  if [ -f /etc/systemd/system/$filename ];then
+    systemctl disable $filename >/dev/null 2>&1
+    systemctl stop $filename >/dev/null 2>&1
+    systemctl daemon-reload
+    rm -f /etc/systemd/system/$filename >/dev/null 2>&1
+  fi
+}
+
 reset_extra_volume () {
   local mp filename
   local lv_name=$1
@@ -416,16 +432,7 @@ reset_extra_volume () {
   if [ -z "$mp" ];then
     mp=${mount_dir}
   fi
-  #
-  # In the past we created a systemd mount target file, we no longer
-  # use it, but if one pre-existed we still need to handle it.
-  #
-  filename=$(systemd_escaped_filename $mp)
-  if [ -f /etc/systemd/system/$filename ];then
-    systemctl disable $filename >/dev/null 2>&1
-    systemctl daemon-reload
-    rm /etc/systemd/system/$filename >/dev/null 2>&1
-  fi
+  remove_systemd_mount_target $mp
 }
 
 reset_lvm_thin_pool () {
@@ -894,6 +901,7 @@ extra_lv_mountpoint() {
 mount_extra_volume() {
   local lv_name=$1
   local mount_dir=$2
+  remove_systemd_mount_target $mount_dir
   mounts=$(extra_lv_mountpoint $lv_name $mount_dir)
   if [ -z "$mounts" ]; then
       mount /dev/$VG/$lv_name $mount_dir
