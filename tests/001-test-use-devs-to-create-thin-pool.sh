@@ -5,9 +5,9 @@ test_devs() {
   local devs=$TEST_DEVS
   local test_status=1
   local testname=`basename "$0"`
-  local vg_name="dss-test-foo"
+  local vg_name="css-test-foo"
   
-  # Error out if any pre-existing volume group vg named dss-test-foo
+  # Error out if any pre-existing volume group vg named css-test-foo
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
     return $test_status
@@ -20,11 +20,11 @@ VG=$vg_name
 EOF
 
  # Run container-storage-setup
- $DSSBIN >> $LOGS 2>&1
+ $CSSBIN >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
     cleanup $vg_name "$devs"
     return $test_status
  fi
@@ -33,7 +33,7 @@ EOF
   if vg_exists "$vg_name"; then
     test_status=0
   else
-    echo "ERROR: $testname: $DSSBIN failed. $vg_name was not created." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed. $vg_name was not created." >> $LOGS
   fi
 
   cleanup $vg_name "$devs"

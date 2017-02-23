@@ -8,7 +8,7 @@ test_set_extra_opts() {
   local devs=$TEST_DEVS
   local test_status=1
   local testname=`basename "$0"`
-  local vg_name="dss-test-foo"
+  local vg_name="css-test-foo"
   local extra_options="--storage-opt dm.fs=ext4"
   local infile=${WORKDIR}/container-storage-setup
   local outfile=${WORKDIR}/container-storage
@@ -27,16 +27,16 @@ CONTAINER_THINPOOL=container-thinpool
 EOF
 
   # Run container-storage-setup
-  $DSSBIN $infile $outfile >> $LOGS 2>&1
+  $CSSBIN $infile $outfile >> $LOGS 2>&1
 
-  # dss failed
+  # css failed
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN --reset failed." >> $LOGS
     cleanup $vg_name "$devs" "$infile" "$outfile"
     return $test_status
   fi
 
-  # Check if storage config file was created by dss
+  # Check if storage config file was created by css
   if [ ! -f $outfile ]; then
     echo "ERROR: $testname: $outfile file was not created." >> $LOGS
     cleanup $vg_name "$devs" "$infile" "$outfile"

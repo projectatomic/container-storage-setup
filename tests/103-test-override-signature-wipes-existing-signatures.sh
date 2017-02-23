@@ -4,7 +4,7 @@ test_override_signatures() {
   local devs=$TEST_DEVS dev
   local test_status=1
   local testname=`basename "$0"`
-  local vg_name="dss-test-foo"
+  local vg_name="css-test-foo"
   local infile=${WORKDIR}/container-storage-setup
   local outfile=${WORKDIR}/container-storage
 
@@ -27,11 +27,11 @@ EOF
   done
 
   # Run container-storage-setup
-  $DSSBIN $infile $outfile >> $LOGS 2>&1
+  $CSSBIN $infile $outfile >> $LOGS 2>&1
 
   # Test failed.
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
     cleanup $vg_name "$devs" "$infile" "$outfile"
     return $test_status
   fi
@@ -40,7 +40,7 @@ EOF
   if vg_exists "$vg_name"; then
     test_status=0
   else
-    echo "ERROR: $testname: $DSSBIN $infile $outfile failed. $vg_name was not created." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN $infile $outfile failed. $vg_name was not created." >> $LOGS
   fi
 
   cleanup $vg_name "$devs" "$infile" "$outfile"

@@ -5,10 +5,10 @@ test_docker_root_volume() {
   local devs=$TEST_DEVS
   local test_status=1
   local testname=`basename "$0"`
-  local vg_name="dss-test-foo"
+  local vg_name="css-test-foo"
   local docker_root_lv_name="docker-root-lv"
 
-  # Error out if any pre-existing volume group vg named dss-test-foo
+  # Error out if any pre-existing volume group vg named css-test-foo
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
     return $test_status
@@ -22,11 +22,11 @@ DOCKER_ROOT_VOLUME=yes
 EOF
 
  # Run container-storage-setup
- $DSSBIN >> $LOGS 2>&1
+ $CSSBIN >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
     cleanup $vg_name "$devs"
     return $test_status
  fi

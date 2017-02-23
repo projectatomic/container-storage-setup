@@ -1,14 +1,14 @@
 source $SRCDIR/libtest.sh
 
 # Make sure a disk with lvm signature is rejected and is not overriden
-# by dss. Returns 0 on success and 1 on failure.
+# by css. Returns 0 on success and 1 on failure.
 test_lvm_sig() {
   local devs=$TEST_DEVS dev
   local test_status=1
   local testname=`basename "$0"`
-  local vg_name="dss-test-foo"
+  local vg_name="css-test-foo"
 
-  # Error out if any pre-existing volume group vg named dss-test-foo
+  # Error out if any pre-existing volume group vg named css-test-foo
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
     return $test_status
@@ -25,10 +25,10 @@ EOF
   done
 
   # Run container-storage-setup
-  $DSSBIN >> $LOGS 2>&1
+  $CSSBIN >> $LOGS 2>&1
 
-  # Dss should fail. If it did not, then test failed. This is very crude
-  # check though as dss can fail for so many reasons. A more precise check
+  # Css should fail. If it did not, then test failed. This is very crude
+  # check though as css can fail for so many reasons. A more precise check
   # would be too check for exact error message.
   [ $? -ne 0 ] && test_status=0
 
@@ -37,6 +37,6 @@ EOF
 }
 
 # Make sure a disk with lvm signature is rejected and is not overriden
-# by dss. Returns 0 on success and 1 on failure.
+# by css. Returns 0 on success and 1 on failure.
 
 test_lvm_sig

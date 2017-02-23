@@ -2,7 +2,7 @@
 
 export WORKDIR=$(pwd)/temp/
 METADATA_DIR=/var/lib/docker
-export DSSBIN="/usr/bin/container-storage-setup"
+export CSSBIN="/usr/bin/container-storage-setup"
 export LOGS=$WORKDIR/logs.txt
 
 # Keeps track of overall pass/failure status of tests. Even if single test
@@ -48,7 +48,7 @@ check_config_files() {
   fi
 }
 
-setup_dss_binary() {
+setup_css_binary() {
   # One can setup environment variable CONTAINER_STORAGE_SETUP to override
   # which binary is used for tests.
   if [ -z "$CONTAINER_STORAGE_SETUP" -a -n "$DOCKER_STORAGE_SETUP" ];then
@@ -64,9 +64,9 @@ setup_dss_binary() {
       echo "Error: Executable $CONTAINER_STORAGE_SETUP does not have execute permissions."
       exit 1
     fi
-    DSSBIN=$CONTAINER_STORAGE_SETUP
+    CSSBIN=$CONTAINER_STORAGE_SETUP
   fi
-  echo "INFO: Using $DSSBIN for running tests."
+  echo "INFO: Using $CSSBIN for running tests."
 }
 
 # If disk already has signatures, error out. It should be a clean disk.
@@ -146,7 +146,7 @@ run_tests() {
 export SRCDIR=`dirname $0`
 if [ -e $SRCDIR/css-test-config ]; then
   source $SRCDIR/css-test-config
-  # DEVS is used by dss as well. So exporting this can fail any tests which
+  # DEVS is used by css as well. So exporting this can fail any tests which
   # don't want to use DEVS. So export TEST_DEVS instead.
   TEST_DEVS=$DEVS
   export TEST_DEVS
@@ -178,7 +178,7 @@ check_docker_active
 check_metadata
 check_config_files
 setup_workdir
-setup_dss_binary
+setup_css_binary
 check_block_devs "$DEVS"
 run_tests $@
 exit $PASS_STATUS

@@ -34,8 +34,8 @@ STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
 STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay overlay2"
 
-PIPE1=/run/dss-fifo1
-PIPE2=/run/dss-fifo2
+PIPE1=/run/css-fifo1
+PIPE2=/run/css-fifo2
 TEMPDIR=$(mktemp --tmpdir -d)
 
 # DEVS can have device names without absolute path. Convert these to absolute
@@ -454,7 +454,7 @@ setup_lvm_thin_pool () {
      local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
      Info "Found an already configured thin pool $tpool in ${STORAGE_OUT_FILE}"
 
-     # dss generated thin pool device name starts with /dev/mapper/ and
+     # css generated thin pool device name starts with /dev/mapper/ and
      # ends with $thinpool_name
      if [[ "$tpool" != /dev/mapper/*${escaped_pool_lv_name} ]];then
        Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."

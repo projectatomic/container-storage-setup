@@ -1,4 +1,4 @@
-%define dsslibdir %{_prefix}/lib/container-storage-setup
+%define csslibdir %{_prefix}/lib/container-storage-setup
 
 Name:           container-storage-setup
 Version:        0.5
@@ -29,7 +29,7 @@ as the root logical volume and partition table.
 %files
 %{_bindir}/container-storage-setup
 %{_bindir}/docker-storage-setup
-%dir %{dsslibdir}
+%dir %{csslibdir}
 %{_mandir}/man1/container-storage-setup.1
 
 %changelog

@@ -12,23 +12,23 @@ STORAGE_DRIVER=overlay
 EOF
 
  # Run container-storage-setup
- $DSSBIN $infile $outfile >> $LOGS 2>&1
+ $CSSBIN $infile $outfile >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
     rm -f $infile $outfile
     return 1
  fi
 
- $DSSBIN --reset $infile $outfile >> $LOGS 2>&1
+ $CSSBIN --reset $infile $outfile >> $LOGS 2>&1
  if [ $? -ne 0 ]; then
     # Test failed.
-    echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN --reset failed." >> $LOGS
     test_status=1
  elif [ -e $outfile ]; then
     # Test failed.
-    echo "ERROR: $testname: $DSSBIN --reset $infile $outfile failed to remove $outfile." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN --reset $infile $outfile failed to remove $outfile." >> $LOGS
     test_status=1
  fi
 

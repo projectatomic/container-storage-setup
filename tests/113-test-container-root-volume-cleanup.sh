@@ -7,14 +7,14 @@ test_reset_container_root_volume() {
   local devs=${TEST_DEVS}
   local test_status=1
   local testname=`basename "$0"`
-  local vg_name="dss-test-foo"
+  local vg_name="css-test-foo"
   local root_lv_name="container-root-lv"
   local root_lv_mount_path="/var/lib/containers"
   local mount_filename="var-lib-containers.mount"
   local infile=${WORKDIR}/container-storage-setup
   local outfile=${WORKDIR}/container-storage
 
-  # Error out if any pre-existing volume group vg named dss-test-foo
+  # Error out if any pre-existing volume group vg named css-test-foo
   if vg_exists "$vg_name"; then
     echo "ERROR: $testname: Volume group $vg_name already exists." >> $LOGS
     return $test_status
@@ -29,25 +29,25 @@ CONTAINER_THINPOOL=container-thinpool
 EOF
 
   # Run container-storage-setup
-  $DSSBIN $infile $outfile >> $LOGS 2>&1
+  $CSSBIN $infile $outfile >> $LOGS 2>&1
 
   # Test failed.
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
     cleanup_all $vg_name $root_lv_name $root_lv_mount_path "$devs" $infile $outfile
     return $test_status
   fi
 
-  $DSSBIN --reset $infile $outfile >> $LOGS 2>&1
+  $CSSBIN --reset $infile $outfile >> $LOGS 2>&1
   # Test failed.
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN --reset failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN --reset failed." >> $LOGS
     cleanup_all $vg_name $root_lv_name $root_lv_mount_path "$devs" $infile $outfile
     return $test_status
   fi
 
   if ! everything_clean $vg_name $root_lv_name $mount_filename;then
-    echo "ERROR: $testname: $DSSBIN --reset did not cleanup everything as needed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN --reset did not cleanup everything as needed." >> $LOGS
     cleanup_all $vg_name $root_lv_name $root_lv_mount_path "$devs" $infile $outfile
     return $test_status
   fi

@@ -5,7 +5,7 @@ test_follow_symlinked_devices() {
   local devlinks devlink
   local test_status=1
   local testname=`basename "$0"`
-  local vg_name="dss-test-foo"
+  local vg_name="css-test-foo"
 
   # Create a symlink for a device and try to follow it
   for dev in $TEST_DEVS; do
@@ -25,11 +25,11 @@ DEVS="$devs"
 VG=$vg_name
 EOF
   # Run container-storage-setup
-  $DSSBIN >> $LOGS 2>&1
+  $CSSBIN >> $LOGS 2>&1
 
   # Test failed.
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $DSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
     cleanup_soft_links "$devlinks"
     cleanup $vg_name "$TEST_DEVS"
     return $test_status
@@ -39,7 +39,7 @@ EOF
   if vg_exists "$vg_name"; then
     test_status=0
   else
-    echo "ERROR: $testname: $DSSBIN failed. $vg_name was not created." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed. $vg_name was not created." >> $LOGS
   fi
 
   cleanup_soft_links "$devlinks"
