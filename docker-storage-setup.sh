@@ -400,7 +400,7 @@ reset_extra_volume () {
   local lv_name=$1
   local mount_dir=$2
   if extra_volume_exists $lv_name; then
-    mp=$(extra_lv_mountpoint $lv_name)
+    mp=$(extra_lv_mountpoint $lv_name $mount_dir)
     if [ -n "$mp" ];then
       if ! umount $mp >/dev/null 2>&1; then
         Fatal "Failed to unmount $mp"
@@ -416,6 +416,10 @@ reset_extra_volume () {
   if [ -z "$mp" ];then
     mp=${mount_dir}
   fi
+  #
+  # In the past we created a systemd mount target file, we no longer
+  # use it, but if one pre-existed we still need to handle it.
+  #
   filename=$(systemd_escaped_filename $mp)
   if [ -f /etc/systemd/system/$filename ];then
     systemctl disable $filename >/dev/null 2>&1
@@ -882,40 +886,18 @@ extra_volume_exists() {
 extra_lv_mountpoint() {
   local mounts
   local lv_name=$1
-  mounts=$(findmnt -n -o TARGET --first-only --source /dev/$VG/$lv_name)
+  local mount_dir=$2
+  mounts=$(findmnt -n -o TARGET --source /dev/$VG/$lv_name --mountpoint $mount_dir | head -1)
   echo $mounts
 }
 
-# This method is used to setup mountfile for both, $docker_root_lv_name
-# and $container_root_lv_name. $container_root_lv_name will be mounted
-# on $resolved_mount_dir_path. $docker_root_lv_name
-# will be mounted on $docker_root_dir. Drop a systemd mount unit
-# configuration file at /etc/systemd/system.
-# This would allow the mountpoint to persist across reboots.
 mount_extra_volume() {
-  local filename
   local lv_name=$1
   local mount_dir=$2
-  # filename must match the path ${mount_dir}.
-  # e.g if ${mount_dir} is /var/lib/containers
-  # then filename will be var-lib-containers.mount
-  filename=$(systemd_escaped_filename ${mount_dir})
-  cat <<EOF > /etc/systemd/system/$filename
-[Unit]
-Description=Mount $lv_name on $mount_dir directory.
-Before=docker-storage-setup.service
-
-[Mount]
-What=/dev/$VG/$lv_name
-Where=${mount_dir}
-Type=xfs
-Options=defaults
-
-[Install]
-WantedBy=docker-storage-setup.service
-EOF
-  systemctl enable $filename >/dev/null 2>&1
-  systemctl start $filename
+  mounts=$(extra_lv_mountpoint $lv_name $mount_dir)
+  if [ -z "$mounts" ]; then
+      mount /dev/$VG/$lv_name $mount_dir
+  fi
 }
 
 # Create a logical volume of size specified by first argument. Name of the
@@ -964,6 +946,9 @@ setup_extra_lv_fs() {
     return 1
   fi
   if extra_volume_exists $CONTAINER_ROOT_LV_NAME; then
+    if ! mount_extra_volume $CONTAINER_ROOT_LV_NAME $RESOLVED_MOUNT_DIR_PATH; then
+      Fatal "Failed to mount volume $CONTAINER_ROOT_LV_NAME on $RESOLVED_MOUNT_DIR_PATH"
+    fi
     return 0
   fi
   if [ -z "$CONTAINER_ROOT_LV_SIZE" ]; then
@@ -984,6 +969,9 @@ setup_docker_root_lv_fs() {
     return 1
   fi
   if extra_volume_exists $DOCKER_ROOT_LV_NAME; then
+    if ! mount_extra_volume $DOCKER_ROOT_LV_NAME $DOCKER_ROOT_DIR; then
+      Fatal "Failed to mount volume $DOCKER_ROOT_LV_NAME on $DOCKER_ROOT_DIR"
+    fi
     return 0
   fi
   if [ -z "$DOCKER_ROOT_VOLUME_SIZE" ]; then
