@@ -21,6 +21,15 @@
 
 set -e
 
+# container-storage-setup version information
+CSS_MAJOR_VERSION="0"
+CSS_MINOR_VERSION="1"
+CSS_SUBLEVEL="0"
+CSS_EXTRA_VERSION=""
+
+CSS_VERSION="${CSS_MAJOR_VERSION}.${CSS_MINOR_VERSION}.${CSS_SUBLEVEL}"
+[ -n "$CSS_EXTRA_VERSION" ] && CSS_VERSION="${CSS_VERSION}-${CSS_EXTRA_VERSION}"
+
 # This section reads the config file $INPUTFILE
 # Read man page for a description of currently supported options:
 # 'man container-storage-setup'
@@ -1162,6 +1171,7 @@ usage() {
     Options:
       --help    Print help message
       --reset   Reset your docker storage to init state. 
+      --version Print version information.
 FOE
 }
 
@@ -1181,13 +1191,14 @@ if [ -e /usr/lib/container-storage-setup/container-storage-setup ]; then
 fi
 
 # Main Script
-OPTS=`getopt -o h -l reset -l help -- "$@"`
+OPTS=`getopt -o hv -l reset -l help -l version -- "$@"`
 eval set -- "$OPTS"
 RESET=0
 while true ; do
     case "$1" in
         --reset) RESET=1; shift;;
         -h | --help)  usage $(basename $0); exit 0;;
+        -v | --version)  echo $CSS_VERSION; exit 0;;
         --) shift; break;;
     esac
 done
