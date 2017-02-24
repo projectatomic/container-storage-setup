@@ -43,8 +43,8 @@ STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
 STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
 STORAGE_DRIVERS="devicemapper overlay overlay2"
 
-PIPE1=/run/css-fifo1
-PIPE2=/run/css-fifo2
+PIPE1=/run/css-$$-fifo1
+PIPE2=/run/css-$$-fifo2
 TEMPDIR=$(mktemp --tmpdir -d)
 
 # DEVS can have device names without absolute path. Convert these to absolute
