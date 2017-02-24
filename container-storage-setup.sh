@@ -118,12 +118,16 @@ should_enable_deferred_deletion() {
 platform_supports_deferred_deletion() {
         local deferred_deletion_supported=1
         trap cleanup_pipes EXIT
-        if [ ! -x "/usr/lib/container-storage-setup/css-child-read-write" ];then
+        local child_exec="$SRCDIR/css-child-read-write.sh"
+
+        [ ! -x "$child_exec" ] && child_exec="/usr/lib/container-storage-setup/css-child-read-write"
+
+        if [ ! -x "$child_exec" ];then
            return 1
         fi
         mkfifo $PIPE1
         mkfifo $PIPE2
-        unshare -m /usr/lib/container-storage-setup/css-child-read-write $PIPE1 $PIPE2 "$TEMPDIR" &
+        unshare -m ${child_exec} $PIPE1 $PIPE2 "$TEMPDIR" &
         read -t 10 n <>$PIPE1
         if [ "$n" != "start" ];then
 	   return 1
@@ -1186,7 +1190,9 @@ elif [ -e /usr/lib/container-storage-setup/libcss.sh ]; then
   source /usr/lib/container-storage-setup/libcss.sh
 fi
 
-if [ -e /usr/lib/container-storage-setup/container-storage-setup ]; then
+if [ -e $SRCDIR/container-storage-setup.conf ]; then
+  source $SRCDIR/container-storage-setup.conf
+elif [ -e /usr/lib/container-storage-setup/container-storage-setup ]; then
   source /usr/lib/container-storage-setup/container-storage-setup
 fi
 
