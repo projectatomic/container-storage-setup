@@ -907,7 +907,7 @@ extra_lv_mountpoint() {
   local mounts
   local lv_name=$1
   local mount_dir=$2
-  mounts=$(findmnt -n -o TARGET --source /dev/$VG/$lv_name --mountpoint $mount_dir | head -1)
+  mounts=$(findmnt -n -o TARGET --source /dev/$VG/$lv_name | grep $mount_dir)
   echo $mounts
 }
 
