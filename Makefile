@@ -4,7 +4,7 @@ PREFIX ?= $(DESTDIR)/usr
 BINDIR ?= $(PREFIX)/bin
 MANDIR ?= $(PREFIX)/share/man
 UNITDIR ?= $(PREFIX)/lib/systemd/system
-CSSLIBDIR ?= $(PREFIX)/lib/container-storage-setup
+CSSLIBDIR ?= $(PREFIX)/share/container-storage-setup
 SYSCONFDIR ?= $(DESTDIR)/etc/sysconfig
 
 .PHONY: clean
@@ -36,6 +36,9 @@ install-core:
 dist: container-storage-setup.spec
 	spectool -g container-storage-setup.spec
 
+srpm: dist
+	rpmbuild --define "_sourcedir `pwd`" --define "_specdir `pwd`" \
+	--define "_rpmdir `pwd`" --define "_srcrpmdir `pwd`" -bs container-storage-setup.spec
 rpm: dist
 	rpmbuild --define "_sourcedir `pwd`" --define "_specdir `pwd`" \
 	--define "_rpmdir `pwd`" --define "_srcrpmdir `pwd`" -ba container-storage-setup.spec

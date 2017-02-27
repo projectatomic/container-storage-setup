@@ -1,6 +1,6 @@
 %global project container-storage-setup
 %global git0 https://github.com/projectatomic/%{repo}
-%define csslibdir %{_prefix}/lib/container-storage-setup
+%define csslibdir %{_prefix}/share/container-storage-setup
 %global commit         79462e9565053fb1e0d87c336e6d980f0a56c41e
 %global shortcommit    %(c=%{commit}; echo ${c:0:7})
 %global repo %{project}
