@@ -32,3 +32,10 @@ install-core:
 	install -D -m 755 libcss.sh ${CSSLIBDIR}/libcss.sh
 	install -D -m 755 css-child-read-write.sh ${CSSLIBDIR}/css-child-read-write
 	install -D -m 644 container-storage-setup.1 ${MANDIR}/man1/container-storage-setup.1
+
+dist: container-storage-setup.spec
+	spectool -g container-storage-setup.spec
+
+rpm: dist
+	rpmbuild --define "_sourcedir `pwd`" --define "_specdir `pwd`" \
+	--define "_rpmdir `pwd`" --define "_srcrpmdir `pwd`" -ba container-storage-setup.spec
