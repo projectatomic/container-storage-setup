@@ -15,10 +15,7 @@ URL:            http://github.com/projectatomic/container-storage-setup/
 Source0: %{git0}/archive/%{commit}/%{repo}-%{shortcommit}.tar.gz
 BuildArch: noarch
 
-BuildRequires:  pkgconfig(systemd)
-
 Requires:       lvm2
-Requires:       systemd-units
 Requires:       xfsprogs 
 
 %description
