@@ -1,6 +1,6 @@
 %global project container-storage-setup
 %global git0 https://github.com/projectatomic/%{repo}
-%define csslibdir %{_prefix}/share/container-storage-setup
+%global csslibdir %{_prefix}/share/container-storage-setup
 %global commit         79462e9565053fb1e0d87c336e6d980f0a56c41e
 %global shortcommit    %(c=%{commit}; echo ${c:0:7})
 %global repo %{project}
@@ -32,6 +32,7 @@ as the root logical volume and partition table.
 %{__make} install-core DESTDIR=%{?buildroot}
 
 %files
+%doc README.md 
 %{_bindir}/container-storage-setup
 %dir %{csslibdir}
 %{_mandir}/man1/container-storage-setup.1*
