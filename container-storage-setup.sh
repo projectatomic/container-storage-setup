@@ -416,10 +416,12 @@ systemd_escaped_filename () {
 remove_systemd_mount_target () {
   local mp=$1
   local filename=$(systemd_escaped_filename $mp)
-  if [ -f /etc/systemd/system/$filename ];then
-    systemctl disable $filename >/dev/null 2>&1
-    systemctl stop $filename >/dev/null 2>&1
-    systemctl daemon-reload
+  if [ -f /etc/systemd/system/$filename ]; then
+      if [ -x /usr/bin/systemctl ];then      
+	  systemctl disable $filename >/dev/null 2>&1
+	  systemctl stop $filename >/dev/null 2>&1
+	  systemctl daemon-reload
+      fi
     rm -f /etc/systemd/system/$filename >/dev/null 2>&1
   fi
 }
