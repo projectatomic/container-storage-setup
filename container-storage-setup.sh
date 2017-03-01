@@ -22,39 +22,39 @@
 set -e
 
 # container-storage-setup version information
-CSS_MAJOR_VERSION="0"
-CSS_MINOR_VERSION="1"
-CSS_SUBLEVEL="0"
-CSS_EXTRA_VERSION=""
+_CSS_MAJOR_VERSION="0"
+_CSS_MINOR_VERSION="1"
+_CSS_SUBLEVEL="0"
+_CSS_EXTRA_VERSION=""
 
-CSS_VERSION="${CSS_MAJOR_VERSION}.${CSS_MINOR_VERSION}.${CSS_SUBLEVEL}"
-[ -n "$CSS_EXTRA_VERSION" ] && CSS_VERSION="${CSS_VERSION}-${CSS_EXTRA_VERSION}"
+_CSS_VERSION="${CSS_MAJOR_VERSION}.${CSS_MINOR_VERSION}.${CSS_SUBLEVEL}"
+[ -n "$_CSS_EXTRA_VERSION" ] && _CSS_VERSION="${_CSS_VERSION}-${_CSS_EXTRA_VERSION}"
 
 # This section reads the config file $INPUTFILE
 # Read man page for a description of currently supported options:
 # 'man container-storage-setup'
 
-DOCKER_ROOT_LV_NAME="docker-root-lv"
-DOCKER_ROOT_DIR="/var/lib/docker"
-DOCKER_METADATA_DIR="/var/lib/docker"
+_DOCKER_ROOT_LV_NAME="docker-root-lv"
+_DOCKER_ROOT_DIR="/var/lib/docker"
+_DOCKER_METADATA_DIR="/var/lib/docker"
 DOCKER_ROOT_VOLUME_SIZE=40%FREE
 
-STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
-STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
-STORAGE_DRIVERS="devicemapper overlay overlay2"
+_STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
+_STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
+_STORAGE_DRIVERS="devicemapper overlay overlay2"
 
-PIPE1=/run/css-$$-fifo1
-PIPE2=/run/css-$$-fifo2
-TEMPDIR=$(mktemp --tmpdir -d)
+_PIPE1=/run/css-$$-fifo1
+_PIPE2=/run/css-$$-fifo2
+_TEMPDIR=$(mktemp --tmpdir -d)
 
 # DEVS can have device names without absolute path. Convert these to absolute
 # paths and save in ABS_DEVS and use in rest of the code.
-DEVS_ABS=""
+_DEVS_ABS=""
 
-# Will have currently configured storage options in ${STORAGE_OUT_FILE}
-CURRENT_STORAGE_OPTIONS=""
+# Will have currently configured storage options in ${_STORAGE_OUT_FILE}
+_CURRENT_STORAGE_OPTIONS=""
 
-STORAGE_OPTIONS="STORAGE_OPTIONS"
+_STORAGE_OPTIONS="STORAGE_OPTIONS"
 
 get_docker_version() {
   local version
@@ -118,30 +118,30 @@ should_enable_deferred_deletion() {
 platform_supports_deferred_deletion() {
         local deferred_deletion_supported=1
         trap cleanup_pipes EXIT
-        local child_exec="$SRCDIR/css-child-read-write.sh"
+        local child_exec="$_SRCDIR/css-child-read-write.sh"
 
         [ ! -x "$child_exec" ] && child_exec="/usr/share/container-storage-setup/css-child-read-write"
 
         if [ ! -x "$child_exec" ];then
            return 1
         fi
-        mkfifo $PIPE1
-        mkfifo $PIPE2
-        unshare -m ${child_exec} $PIPE1 $PIPE2 "$TEMPDIR" &
-        read -t 10 n <>$PIPE1
+        mkfifo $_PIPE1
+        mkfifo $_PIPE2
+        unshare -m ${child_exec} $_PIPE1 $_PIPE2 "$_TEMPDIR" &
+        read -t 10 n <>$_PIPE1
         if [ "$n" != "start" ];then
 	   return 1
         fi
-        rmdir $TEMPDIR > /dev/null 2>&1
+        rmdir $_TEMPDIR > /dev/null 2>&1
         deferred_deletion_supported=$?
-        echo "finish" > $PIPE2
+        echo "finish" > $_PIPE2
         return $deferred_deletion_supported
 }
 
 cleanup_pipes(){
-    rm -f $PIPE1
-    rm -f $PIPE2
-    rmdir $TEMPDIR 2>/dev/null
+    rm -f $_PIPE1
+    rm -f $_PIPE2
+    rmdir $_TEMPDIR 2>/dev/null
 }
 
 extra_options_has_dm_fs() {
@@ -196,7 +196,7 @@ get_devicemapper_config_options() {
   eval $( lvs --nameprefixes --noheadings -o lv_name,kernel_major,kernel_minor $VG | while read line; do
     eval $line
     if [ "$LVM2_LV_NAME" = "$CONTAINER_THINPOOL" ]; then
-      echo POOL_DEVICE_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
+      echo _POOL_DEVICE_PATH=/dev/mapper/$( cat /sys/dev/block/${LVM2_LV_KERNEL_MAJOR}:${LVM2_LV_KERNEL_MINOR}/dm/name )
     fi
   done )
 
@@ -205,7 +205,7 @@ get_devicemapper_config_options() {
     dm_fs=""
   fi
 
-  storage_options="${STORAGE_OPTIONS}=\"--storage-driver devicemapper ${dm_fs} --storage-opt dm.thinpooldev=$POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string) ${EXTRA_STORAGE_OPTIONS}\""
+  storage_options="${_STORAGE_OPTIONS}=\"--storage-driver devicemapper ${dm_fs} --storage-opt dm.thinpooldev=$_POOL_DEVICE_PATH $(get_deferred_removal_string) $(get_deferred_deletion_string) ${EXTRA_STORAGE_OPTIONS}\""
   echo $storage_options
 }
 
@@ -214,7 +214,7 @@ get_config_options() {
     get_devicemapper_config_options
     return $?
   fi
-  echo "${STORAGE_OPTIONS}=\"--storage-driver $1 ${EXTRA_STORAGE_OPTIONS}\""
+  echo "${_STORAGE_OPTIONS}=\"--storage-driver $1 ${EXTRA_STORAGE_OPTIONS}\""
   return 0
 }
 
@@ -224,11 +224,11 @@ write_storage_config_file () {
       return 1
   fi
 
-  cat <<EOF > ${STORAGE_OUT_FILE}.tmp
+  cat <<EOF > ${_STORAGE_OUT_FILE}.tmp
 $storage_options
 EOF
 
-  mv -Z ${STORAGE_OUT_FILE}.tmp ${STORAGE_OUT_FILE}
+  mv -Z ${_STORAGE_OUT_FILE}.tmp ${_STORAGE_OUT_FILE}
 }
 
 convert_size_in_bytes() {
@@ -337,7 +337,7 @@ create_lvm_thin_pool () {
      Fatal "CONTAINER_THINPOOL must be defined for the devicemapper storage driver."
   fi
 
-  if [ -z "$DEVS_ABS" ] && [ -z "$VG_EXISTS" ]; then
+  if [ -z "$_DEVS_ABS" ] && [ -z "$_VG_EXISTS" ]; then
     Fatal "Specified volume group $VG does not exist, and no devices were specified"
   fi
 
@@ -353,30 +353,30 @@ create_lvm_thin_pool () {
 
   # Calculate size of metadata lv. Reserve 0.1% of the free space in the VG
   # for docker metadata.
-  VG_SIZE=$(vgs --noheadings --nosuffix --units s -o vg_size $VG)
-  META_SIZE=$(( $VG_SIZE / 1000 + 1 ))
+  _VG_SIZE=$(vgs --noheadings --nosuffix --units s -o vg_size $VG)
+  _META_SIZE=$(( $_VG_SIZE / 1000 + 1 ))
 
-  if [ -z "$META_SIZE" ];then
+  if [ -z "$_META_SIZE" ];then
     Fatal "Failed to calculate metadata volume size."
   fi
 
   if [ -n "$CHUNK_SIZE" ]; then
-    CHUNK_SIZE_ARG="-c $CHUNK_SIZE"
+    _CHUNK_SIZE_ARG="-c $CHUNK_SIZE"
   fi
 
   if [[ $DATA_SIZE == *%* ]]; then
-    DATA_SIZE_ARG="-l $DATA_SIZE"
+    _DATA_SIZE_ARG="-l $DATA_SIZE"
   else
-    DATA_SIZE_ARG="-L $DATA_SIZE"
+    _DATA_SIZE_ARG="-L $DATA_SIZE"
   fi
 
-  lvcreate -y --type thin-pool --zero n $CHUNK_SIZE_ARG --poolmetadatasize ${META_SIZE}s $DATA_SIZE_ARG -n $CONTAINER_THINPOOL $VG
+  lvcreate -y --type thin-pool --zero n $_CHUNK_SIZE_ARG --poolmetadatasize ${_META_SIZE}s $_DATA_SIZE_ARG -n $CONTAINER_THINPOOL $VG
 }
 
 get_configured_thin_pool() {
   local options tpool opt
 
-  options=$CURRENT_STORAGE_OPTIONS
+  options=$_CURRENT_STORAGE_OPTIONS
   [ -z "$options" ] && return 0
 
   # This assumes that thin pool is specified as dm.thinpooldev=foo. There
@@ -391,13 +391,13 @@ get_configured_thin_pool() {
 }
 
 check_docker_storage_metadata() {
-  local docker_devmapper_meta_dir="$DOCKER_METADATA_DIR/devicemapper/metadata/"
+  local docker_devmapper_meta_dir="$_DOCKER_METADATA_DIR/devicemapper/metadata/"
 
   [ ! -d "$docker_devmapper_meta_dir" ] && return 0
 
   # Docker seems to be already using devicemapper storage driver. Error out.
   Error "Docker has been previously configured for use with devicemapper graph driver. Not creating a new thin pool as existing docker metadata will fail to work with it. Manual cleanup is required before this will succeed."
-  Info "Docker state can be reset by stopping docker and by removing ${DOCKER_METADATA_DIR} directory. This will destroy existing docker images and containers and all the docker metadata."
+  Info "Docker state can be reset by stopping docker and by removing ${_DOCKER_METADATA_DIR} directory. This will destroy existing docker images and containers and all the docker metadata."
   exit 1
 }
 
@@ -467,7 +467,7 @@ setup_lvm_thin_pool () {
 
   if [ -n "$tpool" ]; then
      local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
-     Info "Found an already configured thin pool $tpool in ${STORAGE_OUT_FILE}"
+     Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
 
      # css generated thin pool device name starts with /dev/mapper/ and
      # ends with $thinpool_name
@@ -476,7 +476,7 @@ setup_lvm_thin_pool () {
      fi
 
      if ! wait_for_dev "$tpool"; then
-       Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${STORAGE_OUT_FILE} and retry"
+       Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${_STORAGE_OUT_FILE} and retry"
      fi
   fi
 
@@ -485,7 +485,7 @@ setup_lvm_thin_pool () {
   if ! vg_exists "$VG";then
     Fatal "No valid volume group found. Exiting."
   else
-    VG_EXISTS=1
+    _VG_EXISTS=1
   fi
 
   if ! lvm_pool_exists $thinpool_name; then
@@ -495,8 +495,8 @@ setup_lvm_thin_pool () {
   else
     # At this point /etc/sysconfig/docker-storage file should exist. If user
     # deleted this file accidently without deleting thin pool, recreate it.
-    if [ ! -f "${STORAGE_OUT_FILE}" ];then
-      Info "${STORAGE_OUT_FILE} file is missing. Recreating it."
+    if [ ! -f "${_STORAGE_OUT_FILE}" ];then
+      Info "${_STORAGE_OUT_FILE} file is missing. Recreating it."
       write_storage_config_file
     fi
   fi
@@ -533,15 +533,15 @@ lvm_pool_exists() {
   return 1
 }
 
-# If a ${STORAGE_OUT_FILE} file is present and if it contains
+# If a ${_STORAGE_OUT_FILE} file is present and if it contains
 # dm.datadev or dm.metadatadev entries, that means we have used old mode
 # in the past.
 is_old_data_meta_mode() {
-  if [ ! -f "${STORAGE_OUT_FILE}" ];then
+  if [ ! -f "${_STORAGE_OUT_FILE}" ];then
     return 1
   fi
 
-  if ! grep -e "^${STORAGE_OPTIONS}=.*dm\.datadev" -e "^${STORAGE_OPTIONS}=.*dm\.metadatadev" ${STORAGE_OUT_FILE}  > /dev/null 2>&1;then
+  if ! grep -e "^${_STORAGE_OPTIONS}=.*dm\.datadev" -e "^${_STORAGE_OPTIONS}=.*dm\.metadatadev" ${_STORAGE_OUT_FILE}  > /dev/null 2>&1;then
     return 1
   fi
 
@@ -551,7 +551,7 @@ is_old_data_meta_mode() {
 grow_root_pvs() {
   # If root is not in a volume group, then there are no root pvs and nothing
   # to do.
-  [ -z "$ROOT_PVS" ] && return 0
+  [ -z "$_ROOT_PVS" ] && return 0
 
   # Grow root pvs only if user asked for it through config file.
   [ "$GROWPART" != "true" ] && return
@@ -567,7 +567,7 @@ grow_root_pvs() {
   # RAID for the root device.  In the mirrored or striped case, we are growing
   # partitions on all disks, so as long as they match, growing the LV should
   # also work.
-  for pv in $ROOT_PVS; do
+  for pv in $_ROOT_PVS; do
     # Split device & partition.  Ick.
     growpart $( echo $pv | sed -r 's/([^0-9]*)([0-9]+)/\1 \2/' ) || true
     pvresize $pv
@@ -577,7 +577,7 @@ grow_root_pvs() {
 grow_root_lv_fs() {
   if [ -n "$ROOT_SIZE" ]; then
     # TODO: Error checking if specified size is <= current size
-    lvextend -r -L $ROOT_SIZE $ROOT_DEV || true
+    lvextend -r -L $ROOT_SIZE $_ROOT_DEV || true
   fi
 }
 
@@ -684,7 +684,7 @@ canonicalize_block_devs() {
 scan_disks() {
   local new_disks=""
 
-  for dev in $DEVS_ABS; do
+  for dev in $_DEVS_ABS; do
     local basename=$(basename $dev)
     local p
 
@@ -767,18 +767,18 @@ create_disk_partitions() {
       Fatal "Failed to wipe signatures on device ${dev}1"
     fi
     pvcreate ${dev}1
-    PVS="$PVS ${dev}1"
+    _PVS="$_PVS ${dev}1"
   done
 }
 
 create_extend_volume_group() {
-  if [ -z "$VG_EXISTS" ]; then
-    vgcreate $VG $PVS
-    VG_EXISTS=1
+  if [ -z "$_VG_EXISTS" ]; then
+    vgcreate $VG $_PVS
+    _VG_EXISTS=1
   else
     # TODO:
     #   * Error handling when PV is already part of a VG
-    vgextend $VG $PVS
+    vgextend $VG $_PVS
   fi
 }
 
@@ -835,11 +835,11 @@ disable_auto_pool_extension() {
 get_docker_storage_options() {
   local options
 
-  if [ ! -f "${STORAGE_OUT_FILE}" ];then
+  if [ ! -f "${_STORAGE_OUT_FILE}" ];then
     return 0
   fi
 
-  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" ${STORAGE_OUT_FILE} | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
+  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" ${_STORAGE_OUT_FILE} | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
     echo $options
     return 0
   fi
@@ -850,7 +850,7 @@ get_docker_storage_options() {
 is_valid_storage_driver() {
   local driver=$1 d
 
-  for d in $STORAGE_DRIVERS;do
+  for d in $_STORAGE_DRIVERS;do
     [ "$driver" == "$d" ] && return 0
   done
 
@@ -861,7 +861,7 @@ is_valid_storage_driver() {
 get_existing_storage_driver() {
   local options driver
 
-  options=$CURRENT_STORAGE_OPTIONS
+  options=$_CURRENT_STORAGE_OPTIONS
 
   [ -z "$options" ] && return 0
 
@@ -964,13 +964,13 @@ setup_extra_volume() {
 }
 
 setup_extra_lv_fs() {
-  [ -z "$RESOLVED_MOUNT_DIR_PATH" ] && return 0
-  if ! setup_extra_dir $RESOLVED_MOUNT_DIR_PATH; then
+  [ -z "$_RESOLVED_MOUNT_DIR_PATH" ] && return 0
+  if ! setup_extra_dir $_RESOLVED_MOUNT_DIR_PATH; then
     return 1
   fi
   if extra_volume_exists $CONTAINER_ROOT_LV_NAME; then
-    if ! mount_extra_volume $CONTAINER_ROOT_LV_NAME $RESOLVED_MOUNT_DIR_PATH; then
-      Fatal "Failed to mount volume $CONTAINER_ROOT_LV_NAME on $RESOLVED_MOUNT_DIR_PATH"
+    if ! mount_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH; then
+      Fatal "Failed to mount volume $CONTAINER_ROOT_LV_NAME on $_RESOLVED_MOUNT_DIR_PATH"
     fi
     return 0
   fi
@@ -981,7 +981,7 @@ setup_extra_lv_fs() {
     Fatal "CONTAINER_ROOT_LV_SIZE value $CONTAINER_ROOT_LV_SIZE is invalid."
   fi
   # Container runtime extra volume does not exist. Create one.
-  if ! setup_extra_volume $CONTAINER_ROOT_LV_NAME $RESOLVED_MOUNT_DIR_PATH $CONTAINER_ROOT_LV_SIZE; then
+  if ! setup_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH $CONTAINER_ROOT_LV_SIZE; then
     Fatal "Failed to setup extra volume $CONTAINER_ROOT_LV_NAME."
   fi
 }
@@ -991,9 +991,9 @@ setup_docker_root_lv_fs() {
   if ! setup_docker_root_dir; then
     return 1
   fi
-  if extra_volume_exists $DOCKER_ROOT_LV_NAME; then
-    if ! mount_extra_volume $DOCKER_ROOT_LV_NAME $DOCKER_ROOT_DIR; then
-      Fatal "Failed to mount volume $DOCKER_ROOT_LV_NAME on $DOCKER_ROOT_DIR"
+  if extra_volume_exists $_DOCKER_ROOT_LV_NAME; then
+    if ! mount_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR; then
+      Fatal "Failed to mount volume $_DOCKER_ROOT_LV_NAME on $_DOCKER_ROOT_DIR"
     fi
     return 0
   fi
@@ -1004,8 +1004,8 @@ setup_docker_root_lv_fs() {
     Fatal "DOCKER_ROOT_VOLUME_SIZE value $DOCKER_ROOT_VOLUME_SIZE is invalid."
   fi
   # Docker root volume does not exist. Create one.
-  if ! setup_extra_volume $DOCKER_ROOT_LV_NAME $DOCKER_ROOT_DIR $DOCKER_ROOT_VOLUME_SIZE; then
-    Fatal "Failed to setup logical volume $DOCKER_ROOT_LV_NAME."
+  if ! setup_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR $DOCKER_ROOT_VOLUME_SIZE; then
+    Fatal "Failed to setup logical volume $_DOCKER_ROOT_LV_NAME."
   fi
 }
 
@@ -1050,7 +1050,7 @@ setup_storage() {
   fi
 
   # Query and save current storage options
-  if ! CURRENT_STORAGE_OPTIONS=$(get_docker_storage_options); then
+  if ! _CURRENT_STORAGE_OPTIONS=$(get_docker_storage_options); then
     return 1
   fi
 
@@ -1060,7 +1060,7 @@ setup_storage() {
 
   # If storage is configured and new driver should match old one.
   if [ -n "$current_driver" ] && [ "$current_driver" != "$STORAGE_DRIVER" ];then
-   Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove ${STORAGE_OUT_FILE} and retry."
+   Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove ${_STORAGE_OUT_FILE} and retry."
   fi
 
   # If a user decides to setup (a) and (b)/(c):
@@ -1123,7 +1123,7 @@ get_docker_root_dir(){
     if [ -z "$path" ];then
       return
     fi
-    if ! DOCKER_ROOT_DIR=$(realpath -m $path);then
+    if ! _DOCKER_ROOT_DIR=$(realpath -m $path);then
       Fatal "Failed to resolve path $path"
     fi
 }
@@ -1142,30 +1142,30 @@ setup_docker_root_dir() {
     return 1
   fi
 
-  [ -d "$DOCKER_ROOT_DIR" ] && return 0
+  [ -d "_$DOCKER_ROOT_DIR" ] && return 0
 
   # Directory does not exist. Create one.
-  mkdir -p $DOCKER_ROOT_DIR
+  mkdir -p $_DOCKER_ROOT_DIR
   return $?
 }
 
 reset_storage() {
   check_storage_options
-  if [ -n "$RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
-    reset_extra_volume $CONTAINER_ROOT_LV_NAME $RESOLVED_MOUNT_DIR_PATH
+  if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
+    reset_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH
   fi
 
   if [ "$DOCKER_ROOT_VOLUME" == "yes" ];then
     if ! get_docker_root_dir; then
       return 1
     fi
-    reset_extra_volume $DOCKER_ROOT_LV_NAME $DOCKER_ROOT_DIR
+    reset_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR
   fi
 
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     reset_lvm_thin_pool
   fi
-  rm -f ${STORAGE_OUT_FILE}
+  rm -f ${_STORAGE_OUT_FILE}
 }
 
 usage() {
@@ -1184,29 +1184,29 @@ FOE
 # Source library. If there is a library present in same dir as d-s-s, source
 # that otherwise fall back to standard library. This is useful when modifyin
 # libcss.sh in git tree and testing d-s-s.
-SRCDIR=`dirname $0`
+_SRCDIR=`dirname $0`
 
-if [ -e $SRCDIR/libcss.sh ]; then
-  source $SRCDIR/libcss.sh
+if [ -e $_SRCDIR/libcss.sh ]; then
+  source $_SRCDIR/libcss.sh
 elif [ -e /usr/share/container-storage-setup/libcss.sh ]; then
   source /usr/share/container-storage-setup/libcss.sh
 fi
 
-if [ -e $SRCDIR/container-storage-setup.conf ]; then
-  source $SRCDIR/container-storage-setup.conf
+if [ -e $_SRCDIR/container-storage-setup.conf ]; then
+  source $_SRCDIR/container-storage-setup.conf
 elif [ -e /usr/share/container-storage-setup/container-storage-setup ]; then
   source /usr/share/container-storage-setup/container-storage-setup
 fi
 
 # Main Script
-OPTS=`getopt -o hv -l reset -l help -l version -- "$@"`
-eval set -- "$OPTS"
-RESET=0
+_OPTS=`getopt -o hv -l reset -l help -l version -- "$@"`
+eval set -- "$_OPTS"
+_RESET=0
 while true ; do
     case "$1" in
-        --reset) RESET=1; shift;;
+        --reset) _RESET=1; shift;;
         -h | --help)  usage $(basename $0); exit 0;;
-        -v | --version)  echo $CSS_VERSION; exit 0;;
+        -v | --version)  echo $_CSS_VERSION; exit 0;;
         --) shift; break;;
     esac
 done
@@ -1216,8 +1216,8 @@ case $# in
 	CONTAINER_THINPOOL=docker-pool
 	;;
     2)
-	STORAGE_IN_FILE=$1
-	STORAGE_OUT_FILE=$2
+	_STORAGE_IN_FILE=$1
+	_STORAGE_OUT_FILE=$2
 	;;
     *)
 	usage $(basename $0) >&2
@@ -1225,50 +1225,50 @@ case $# in
 	;;
 esac
 
-if [ "${STORAGE_OUT_FILE}" = "/etc/sysconfig/docker-storage" ]; then
-   STORAGE_OPTIONS="DOCKER_STORAGE_OPTIONS"
+if [ "${_STORAGE_OUT_FILE}" = "/etc/sysconfig/docker-storage" ]; then
+   _STORAGE_OPTIONS="DOCKER_STORAGE_OPTIONS"
 fi
 
-# If user has overridden any settings in $STORAGE_IN_FILE
+# If user has overridden any settings in $_STORAGE_IN_FILE
 # take that into account.
-if [ -e ${STORAGE_IN_FILE} ]; then
-  source ${STORAGE_IN_FILE}
+if [ -e ${_STORAGE_IN_FILE} ]; then
+  source ${_STORAGE_IN_FILE}
 fi
 
-# Populate $RESOLVED_MOUNT_DIR_PATH
+# Populate $_RESOLVED_MOUNT_DIR_PATH
 if [ -n "$CONTAINER_ROOT_LV_MOUNT_PATH" ];then
-  if ! RESOLVED_MOUNT_DIR_PATH=$(realpath $CONTAINER_ROOT_LV_MOUNT_PATH);then
+  if ! _RESOLVED_MOUNT_DIR_PATH=$(realpath $CONTAINER_ROOT_LV_MOUNT_PATH);then
      Fatal "Failed to resolve path $CONTAINER_ROOT_LV_MOUNT_PATH"
   fi
 fi
 
 # Read mounts
-ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
-if ! ROOT_VG=$(lvs --noheadings -o vg_name $ROOT_DEV 2>/dev/null);then
+_ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
+if ! _ROOT_VG=$(lvs --noheadings -o vg_name $_ROOT_DEV 2>/dev/null);then
   Info "Volume group backing root filesystem could not be determined"
-  ROOT_VG=
+  _ROOT_VG=
 else
-  ROOT_VG=$(echo $ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
+  _ROOT_VG=$(echo $_ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
 fi
 
-ROOT_PVS=
-if [ -n "$ROOT_VG" ];then
-  ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$ROOT_VG\$/ { print \$1 }" )
+_ROOT_PVS=
+if [ -n "$_ROOT_VG" ];then
+  _ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$_ROOT_VG\$/ { print \$1 }" )
 fi
 
-VG_EXISTS=
+_VG_EXISTS=
 if [ -z "$VG" ]; then
-  if [ -n "$ROOT_VG" ]; then
-    VG=$ROOT_VG
-    VG_EXISTS=1
+  if [ -n "$_ROOT_VG" ]; then
+    VG=$_ROOT_VG
+    _VG_EXISTS=1
   fi
 else
   if vg_exists "$VG";then
-    VG_EXISTS=1
+    _VG_EXISTS=1
   fi
 fi
 
-if [ $RESET -eq 1 ]; then
+if [ $_RESET -eq 1 ]; then
     reset_storage
     exit 0
 fi
@@ -1276,16 +1276,16 @@ fi
 # If there is no volume group specified or no root volume group, there is
 # nothing to do in terms of dealing with disks.
 if [[ -n "$DEVS" && -n "$VG" ]]; then
-  DEVS_ABS=$(canonicalize_block_devs "${DEVS}")
+  _DEVS_ABS=$(canonicalize_block_devs "${DEVS}")
 
   # If all the disks have already been correctly partitioned, there is
   # nothing more to do
-  P=$(scan_disks)
-  if [[ -n "$P" ]]; then
-    for dev in $P; do
+  _P=$(scan_disks)
+  if [[ -n "$_P" ]]; then
+    for dev in $_P; do
       check_wipe_block_dev_sig $dev
     done
-    create_disk_partitions "$P"
+    create_disk_partitions "$_P"
     create_extend_volume_group
   fi
 fi
@@ -1295,7 +1295,7 @@ grow_root_pvs
 # NB: We are growing root here first, because when root and docker share a
 # disk, we'll default to giving some portion of remaining space to docker.
 # Do this operation only if root is on a logical volume.
-[ -n "$ROOT_VG" ] && grow_root_lv_fs
+[ -n "$_ROOT_VG" ] && grow_root_lv_fs
 
 if is_old_data_meta_mode; then
   Fatal "Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
