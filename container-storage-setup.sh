@@ -39,6 +39,7 @@ _DOCKER_ROOT_DIR="/var/lib/docker"
 _DOCKER_METADATA_DIR="/var/lib/docker"
 DOCKER_ROOT_VOLUME_SIZE=40%FREE
 
+_DOCKER_COMPAT_MODE=""
 _STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
 _STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
@@ -489,7 +490,7 @@ setup_lvm_thin_pool () {
   fi
 
   if ! lvm_pool_exists $thinpool_name; then
-    check_docker_storage_metadata
+    [ -n "$_DOCKER_COMPAT_MODE" ] && check_docker_storage_metadata
     create_lvm_thin_pool
     write_storage_config_file
   else
@@ -1214,6 +1215,7 @@ done
 case $# in
     0)
 	CONTAINER_THINPOOL=docker-pool
+	_DOCKER_COMPAT_MODE=1
 	;;
     2)
 	_STORAGE_IN_FILE=$1
