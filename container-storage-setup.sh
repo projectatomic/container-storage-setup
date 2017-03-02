@@ -831,15 +831,15 @@ disable_auto_pool_extension() {
 }
 
 
-# Gets the current DOCKER_STORAGE_OPTIONS= string.
-get_docker_storage_options() {
+# Gets the current ${_STORAGE_OPTIONS}= string.
+get_current_storage_options() {
   local options
 
   if [ ! -f "${_STORAGE_OUT_FILE}" ];then
     return 0
   fi
 
-  if options=$(grep -e "^DOCKER_STORAGE_OPTIONS=" ${_STORAGE_OUT_FILE} | sed 's/DOCKER_STORAGE_OPTIONS=//' | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
+  if options=$(grep -e "^${_STORAGE_OPTIONS}=" ${_STORAGE_OUT_FILE} | sed "s/${_STORAGE_OPTIONS}=//" | sed 's/^ *//' | sed 's/^"//' | sed 's/"$//');then
     echo $options
     return 0
   fi
@@ -1050,7 +1050,7 @@ setup_storage() {
   fi
 
   # Query and save current storage options
-  if ! _CURRENT_STORAGE_OPTIONS=$(get_docker_storage_options); then
+  if ! _CURRENT_STORAGE_OPTIONS=$(get_current_storage_options); then
     return 1
   fi
 
