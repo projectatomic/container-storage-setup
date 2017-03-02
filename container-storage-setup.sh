@@ -1227,7 +1227,7 @@ case $# in
 	;;
 esac
 
-if [ "${_STORAGE_OUT_FILE}" = "/etc/sysconfig/docker-storage" ]; then
+if [ -n "$_DOCKER_COMPAT_MODE" ]; then
    _STORAGE_OPTIONS="DOCKER_STORAGE_OPTIONS"
 fi
 
