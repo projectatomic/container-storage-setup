@@ -1047,7 +1047,7 @@ setup_storage() {
   local current_driver
 
   if [ "$STORAGE_DRIVER" == "" ];then
-    Info "No storage driver specified. Specify one using STORAGE_DRIVER option."
+    Info "STORAGE_DRIVER not set, no storage will be configured. You must specify STORAGE_DRIVER if you want to configure storage."
     exit 0
   fi
 
