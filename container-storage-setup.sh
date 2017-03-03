@@ -334,10 +334,6 @@ check_min_data_size_condition() {
 }
 
 create_lvm_thin_pool () {
-  if [ "$STORAGE_DRIVER" == "devicemapper" ] && [ -z "$CONTAINER_THINPOOL" ];then
-     Fatal "CONTAINER_THINPOOL must be defined for the devicemapper storage driver."
-  fi
-
   if [ -z "$_DEVS_ABS" ] && [ -z "$_VG_EXISTS" ]; then
     Fatal "Specified volume group $VG does not exist, and no devices were specified"
   fi
@@ -452,7 +448,7 @@ reset_extra_volume () {
 }
 
 reset_lvm_thin_pool () {
-  local thinpool_name=${CONTAINER_THINPOOL:-docker-pool}
+  local thinpool_name=${CONTAINER_THINPOOL}
   if lvm_pool_exists $thinpool_name; then
       lvchange -an $VG/${thinpool_name}
       lvremove $VG/${thinpool_name}
@@ -464,7 +460,7 @@ setup_lvm_thin_pool () {
   # Check if a thin pool is already configured in /etc/sysconfig/docker-storage.
   # If yes, wait for that thin pool to come up.
   tpool=`get_configured_thin_pool`
-  local thinpool_name=${CONTAINER_THINPOOL:-docker-pool}
+  local thinpool_name=${CONTAINER_THINPOOL}
 
   if [ -n "$tpool" ]; then
      local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
@@ -1011,6 +1007,10 @@ setup_docker_root_lv_fs() {
 }
 
 check_storage_options(){
+  if [ "$STORAGE_DRIVER" == "devicemapper" ] && [ -z "$CONTAINER_THINPOOL" ];then
+     Fatal "CONTAINER_THINPOOL must be defined for the devicemapper storage driver."
+  fi
+
   # Populate $_RESOLVED_MOUNT_DIR_PATH
   if [ -n "$CONTAINER_ROOT_LV_MOUNT_PATH" ];then
     if ! _RESOLVED_MOUNT_DIR_PATH=$(realpath $CONTAINER_ROOT_LV_MOUNT_PATH);then
