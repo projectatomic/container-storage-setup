@@ -33,6 +33,7 @@ as the root logical volume and partition table.
 
 %files
 %doc README.md 
+%license LICENSE
 %{_bindir}/container-storage-setup
 %dir %{csslibdir}
 %{_mandir}/man1/container-storage-setup.1*
