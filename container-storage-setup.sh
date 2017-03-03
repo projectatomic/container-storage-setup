@@ -1011,6 +1011,13 @@ setup_docker_root_lv_fs() {
 }
 
 check_storage_options(){
+  # Populate $_RESOLVED_MOUNT_DIR_PATH
+  if [ -n "$CONTAINER_ROOT_LV_MOUNT_PATH" ];then
+    if ! _RESOLVED_MOUNT_DIR_PATH=$(realpath $CONTAINER_ROOT_LV_MOUNT_PATH);then
+	Fatal "Failed to resolve path $CONTAINER_ROOT_LV_MOUNT_PATH"
+    fi
+  fi
+
   if [ "$DOCKER_ROOT_VOLUME" == "yes" ] && [ -n "$CONTAINER_ROOT_LV_MOUNT_PATH" ];then
      Fatal "DOCKER_ROOT_VOLUME and CONTAINER_ROOT_LV_MOUNT_PATH are mutually exclusive options."
   fi
@@ -1043,8 +1050,6 @@ setup_storage() {
     Info "No storage driver specified. Specify one using STORAGE_DRIVER option."
     exit 0
   fi
-
-  check_storage_options
 
   if ! is_valid_storage_driver $STORAGE_DRIVER;then
     Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
@@ -1151,7 +1156,6 @@ setup_docker_root_dir() {
 }
 
 reset_storage() {
-  check_storage_options
   if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
     reset_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH
   fi
@@ -1237,12 +1241,8 @@ if [ -e ${_STORAGE_IN_FILE} ]; then
   source ${_STORAGE_IN_FILE}
 fi
 
-# Populate $_RESOLVED_MOUNT_DIR_PATH
-if [ -n "$CONTAINER_ROOT_LV_MOUNT_PATH" ];then
-  if ! _RESOLVED_MOUNT_DIR_PATH=$(realpath $CONTAINER_ROOT_LV_MOUNT_PATH);then
-     Fatal "Failed to resolve path $CONTAINER_ROOT_LV_MOUNT_PATH"
-  fi
-fi
+# Verify storage options set correctly in input files
+check_storage_options
 
 # Read mounts
 _ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
