@@ -31,7 +31,7 @@ EOF
 
   # css failed
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $CSSBIN --reset failed." >> $LOGS
+    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
     cleanup $vg_name "$devs" "$infile" "$outfile"
     return $test_status
   fi
