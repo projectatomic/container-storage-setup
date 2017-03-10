@@ -136,9 +136,9 @@ CONTAINER_ROOT_LV_MOUNT_PATH:
      Creates a logical volume named CONTAINER_ROOT_LV_NAME and mounts
      it at the specified path. By default no new logical volume will
      be created. For example:
-     \f[B]CONTAINER_ROOT_LV_MOUNT_PATH=/var/lib/containers\f[]
+     \f[B]CONTAINER_ROOT_LV_MOUNT_PATH=/var/lib/containers/container-runtime\f[]
      would carve out a logical volume, format it with an XFS filesystem
-     and mount it on /var/lib/containers.
+     and mount it on /var/lib/containers/container-runtime.
 
      Note: DOCKER_ROOT_VOLUME is deprecated. Specifying
      DOCKER_ROOT_VOLUME and CONTAINER_ROOT_LV_MOUNT_PATH at the same
