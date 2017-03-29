@@ -40,8 +40,8 @@ _DOCKER_METADATA_DIR="/var/lib/docker"
 DOCKER_ROOT_VOLUME_SIZE=40%FREE
 
 _DOCKER_COMPAT_MODE=""
-_STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
-_STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
+_STORAGE_IN_FILE=""
+_STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 _PIPE1=/run/css-$$-fifo1
@@ -1220,6 +1220,8 @@ case $# in
     0)
 	CONTAINER_THINPOOL=docker-pool
 	_DOCKER_COMPAT_MODE=1
+	_STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
+	_STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
 	;;
     2)
 	_STORAGE_IN_FILE=$1
