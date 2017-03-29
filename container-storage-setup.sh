@@ -1237,7 +1237,7 @@ fi
 
 # If user has overridden any settings in $_STORAGE_IN_FILE
 # take that into account.
-if [ -e ${_STORAGE_IN_FILE} ]; then
+if [ -e "${_STORAGE_IN_FILE}" ]; then
   source ${_STORAGE_IN_FILE}
 fi
 
