@@ -454,7 +454,7 @@ reset_extra_volume () {
 
 reset_lvm_thin_pool () {
   local thinpool_name=${CONTAINER_THINPOOL}
-  if lvm_pool_exists $thinpool_name; then
+  if lvm_pool_exists $thinpool_name $VG; then
       lvchange -an $VG/${thinpool_name}
       lvremove $VG/${thinpool_name}
   fi
@@ -490,7 +490,7 @@ setup_lvm_thin_pool () {
     _VG_EXISTS=1
   fi
 
-  if ! lvm_pool_exists $thinpool_name; then
+  if ! lvm_pool_exists $thinpool_name $VG; then
     [ -n "$_DOCKER_COMPAT_MODE" ] && check_docker_storage_metadata
     create_lvm_thin_pool
     [ -n "$_STORAGE_OUT_FILE" ] &&  write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
@@ -515,11 +515,12 @@ lvm_pool_exists() {
   local lv_data
   local lvname lv lvsize
   local thinpool_name=$1
+  local vg=$2
 
   if [ -z "$thinpool_name" ]; then
       Fatal "Thin pool name must be specified."
   fi
-  lv_data=$( lvs --noheadings -o lv_name,lv_attr --separator , $VG | sed -e 's/^ *//')
+  lv_data=$( lvs --noheadings -o lv_name,lv_attr --separator , $vg | sed -e 's/^ *//')
   SAVEDIFS=$IFS
   for lv in $lv_data; do
   IFS=,
