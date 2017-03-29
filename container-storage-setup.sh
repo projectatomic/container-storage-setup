@@ -427,15 +427,17 @@ reset_extra_volume () {
   local mp filename
   local lv_name=$1
   local mount_dir=$2
-  if extra_volume_exists $lv_name; then
+  local vg=$3
+
+  if extra_volume_exists $lv_name $vg; then
     mp=$(extra_lv_mountpoint $lv_name $mount_dir)
     if [ -n "$mp" ];then
       if ! umount $mp >/dev/null 2>&1; then
         Fatal "Failed to unmount $mp"
       fi
     fi
-    lvchange -an $VG/${lv_name}
-    lvremove $VG/${lv_name}
+    lvchange -an $vg/${lv_name}
+    lvremove $vg/${lv_name}
   else
     return 0
   fi
@@ -897,7 +899,9 @@ get_existing_storage_driver() {
 
 extra_volume_exists() {
   local lv_name=$1
-  lvs $VG/$lv_name > /dev/null 2>&1 && return 0
+  local vg=$2
+
+  lvs $vg/$lv_name > /dev/null 2>&1 && return 0
   return 1
 }
 
@@ -965,7 +969,7 @@ setup_extra_lv_fs() {
   if ! setup_extra_dir $_RESOLVED_MOUNT_DIR_PATH; then
     return 1
   fi
-  if extra_volume_exists $CONTAINER_ROOT_LV_NAME; then
+  if extra_volume_exists $CONTAINER_ROOT_LV_NAME $VG; then
     if ! mount_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH; then
       Fatal "Failed to mount volume $CONTAINER_ROOT_LV_NAME on $_RESOLVED_MOUNT_DIR_PATH"
     fi
@@ -988,7 +992,7 @@ setup_docker_root_lv_fs() {
   if ! setup_docker_root_dir; then
     return 1
   fi
-  if extra_volume_exists $_DOCKER_ROOT_LV_NAME; then
+  if extra_volume_exists $_DOCKER_ROOT_LV_NAME $VG; then
     if ! mount_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR; then
       Fatal "Failed to mount volume $_DOCKER_ROOT_LV_NAME on $_DOCKER_ROOT_DIR"
     fi
@@ -1215,14 +1219,14 @@ partition_disks_create_vg() {
 
 reset_storage() {
   if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
-    reset_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH
+    reset_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH $VG
   fi
 
   if [ "$DOCKER_ROOT_VOLUME" == "yes" ];then
     if ! get_docker_root_dir; then
       return 1
     fi
-    reset_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR
+    reset_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR $VG
   fi
 
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
