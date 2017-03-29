@@ -1192,6 +1192,27 @@ determine_rootfs_pvs_vg() {
   fi
 }
 
+partition_disks_create_vg() {
+  local dev_list
+
+  # If there is no volume group specified or no root volume group, there is
+  # nothing to do in terms of dealing with disks.
+  if [[ -n "$DEVS" && -n "$VG" ]]; then
+    _DEVS_ABS=$(canonicalize_block_devs "${DEVS}")
+
+    # If all the disks have already been correctly partitioned, there is
+    # nothing more to do
+    dev_list=$(scan_disks)
+    if [[ -n "$dev_list" ]]; then
+      for dev in $dev_list; do
+        check_wipe_block_dev_sig $dev
+      done
+      create_disk_partitions "$dev_list"
+      create_extend_volume_group
+    fi
+  fi
+}
+
 reset_storage() {
   if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
     reset_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH
@@ -1290,23 +1311,7 @@ if [ $_RESET -eq 1 ]; then
     exit 0
 fi
 
-# If there is no volume group specified or no root volume group, there is
-# nothing to do in terms of dealing with disks.
-if [[ -n "$DEVS" && -n "$VG" ]]; then
-  _DEVS_ABS=$(canonicalize_block_devs "${DEVS}")
-
-  # If all the disks have already been correctly partitioned, there is
-  # nothing more to do
-  _P=$(scan_disks)
-  if [[ -n "$_P" ]]; then
-    for dev in $_P; do
-      check_wipe_block_dev_sig $dev
-    done
-    create_disk_partitions "$_P"
-    create_extend_volume_group
-  fi
-fi
-
+partition_disks_create_vg
 grow_root_pvs
 
 # NB: We are growing root here first, because when root and docker share a
