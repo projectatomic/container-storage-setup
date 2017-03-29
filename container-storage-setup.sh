@@ -686,20 +686,23 @@ canonicalize_block_devs() {
 # Scans all the disks listed in DEVS= and returns the disks which are not
 # already part of volume group and are new and require further processing.
 scan_disks() {
+  local disk_list="$1"
+  local vg=$2
+  local wipe_signatures=$3
   local new_disks=""
 
-  for dev in $_DEVS_ABS; do
+  for dev in $disk_list; do
     local basename=$(basename $dev)
     local p
 
-    if is_dev_part_of_vg ${dev}1 $VG; then
+    if is_dev_part_of_vg ${dev}1 $vg; then
       Info "Device ${dev} is already partitioned and is part of volume group $VG"
       continue
     fi
 
     # If signatures are being overridden, then simply return the disk as new
     # disk. Even if it is partitioned, partition signatures will be wiped.
-    if [ "$WIPE_SIGNATURES" == "true" ];then
+    if [ "$wipe_signatures" == "true" ];then
       new_disks="$new_disks $dev"
       continue
     fi
@@ -711,7 +714,7 @@ scan_disks() {
       continue
     fi
 
-    Fatal "Device $dev is already partitioned and cannot be added to volume group $VG"
+    Fatal "Device $dev is already partitioned and cannot be added to volume group $vg"
   done
 
   echo $new_disks
@@ -1211,7 +1214,7 @@ partition_disks_create_vg() {
 
     # If all the disks have already been correctly partitioned, there is
     # nothing more to do
-    dev_list=$(scan_disks)
+    dev_list=$(scan_disks "$_DEVS_ABS" "$VG" "$WIPE_SIGNATURES")
     if [[ -n "$dev_list" ]]; then
       for dev in $dev_list; do
         check_wipe_block_dev_sig $dev
