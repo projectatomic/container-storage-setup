@@ -453,10 +453,11 @@ reset_extra_volume () {
 }
 
 reset_lvm_thin_pool () {
-  local thinpool_name=${CONTAINER_THINPOOL}
-  if lvm_pool_exists $thinpool_name $VG; then
-      lvchange -an $VG/${thinpool_name}
-      lvremove $VG/${thinpool_name}
+  local thinpool_name=$1
+  local vg=$2
+  if lvm_pool_exists $thinpool_name $vg; then
+      lvchange -an $vg/${thinpool_name}
+      lvremove $vg/${thinpool_name}
   fi
 }
 
@@ -1234,7 +1235,7 @@ reset_storage() {
   fi
 
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
-    reset_lvm_thin_pool
+    reset_lvm_thin_pool ${CONTAINER_THINPOOL} $VG
   fi
   rm -f ${_STORAGE_OUT_FILE}
 }
