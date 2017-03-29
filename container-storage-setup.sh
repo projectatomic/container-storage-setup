@@ -498,7 +498,7 @@ setup_lvm_thin_pool () {
   else
     # At this point /etc/sysconfig/docker-storage file should exist. If user
     # deleted this file accidently without deleting thin pool, recreate it.
-    if [ -n "$_STORAGE_OUT_FILE" && ! -f "${_STORAGE_OUT_FILE}" ];then
+    if [ -n "$_STORAGE_OUT_FILE" -a ! -f "${_STORAGE_OUT_FILE}" ];then
       Info "${_STORAGE_OUT_FILE} file is missing. Recreating it."
       write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
     fi
