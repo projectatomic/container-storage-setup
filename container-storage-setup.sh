@@ -1029,6 +1029,12 @@ check_storage_options(){
   if [ -n "$CONTAINER_ROOT_LV_MOUNT_PATH" ] && [ -z "$CONTAINER_ROOT_LV_NAME" ];then
      Fatal "CONTAINER_ROOT_LV_NAME cannot be empty, when CONTAINER_ROOT_LV_MOUNT_PATH is set"
   fi
+
+  # Allow using DOCKER_ROOT_VOLUME only in compatibility mode.
+  if [ "$DOCKER_ROOT_VOLUME" == "yes" ] && [ "$_DOCKER_COMPAT_MODE" != "1" ];then
+     Fatal "DOCKER_ROOT_VOLUME is deprecated. Use CONTAINER_ROOT_LV_MOUNT_PATH instead."
+  fi
+
   if [ "$DOCKER_ROOT_VOLUME" == "yes" ];then
      Info "DOCKER_ROOT_VOLUME is deprecated, and will be removed soon. Use CONTAINER_ROOT_LV_MOUNT_PATH instead."
   fi
