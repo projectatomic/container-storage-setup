@@ -1155,6 +1155,37 @@ setup_docker_root_dir() {
   return $?
 }
 
+
+# This deals with determining rootfs, root vg and pvs etc and sets the
+# global variables accordingly.
+determine_rootfs_pvs_vg() {
+  # Read mounts
+  _ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
+  if ! _ROOT_VG=$(lvs --noheadings -o vg_name $_ROOT_DEV 2>/dev/null);then
+    Info "Volume group backing root filesystem could not be determined"
+    _ROOT_VG=
+  else
+    _ROOT_VG=$(echo $_ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
+  fi
+
+  _ROOT_PVS=
+  if [ -n "$_ROOT_VG" ];then
+    _ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$_ROOT_VG\$/ { print \$1 }" )
+  fi
+
+  _VG_EXISTS=
+  if [ -z "$VG" ]; then
+    if [ -n "$_ROOT_VG" ]; then
+      VG=$_ROOT_VG
+      _VG_EXISTS=1
+    fi
+  else
+    if vg_exists "$VG";then
+      _VG_EXISTS=1
+    fi
+  fi
+}
+
 reset_storage() {
   if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
     reset_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH
@@ -1246,31 +1277,7 @@ fi
 # Verify storage options set correctly in input files
 check_storage_options
 
-# Read mounts
-_ROOT_DEV=$( awk '$2 ~ /^\/$/ && $1 !~ /rootfs/ { print $1 }' /proc/mounts )
-if ! _ROOT_VG=$(lvs --noheadings -o vg_name $_ROOT_DEV 2>/dev/null);then
-  Info "Volume group backing root filesystem could not be determined"
-  _ROOT_VG=
-else
-  _ROOT_VG=$(echo $_ROOT_VG | sed -e 's/^ *//' -e 's/ *$//')
-fi
-
-_ROOT_PVS=
-if [ -n "$_ROOT_VG" ];then
-  _ROOT_PVS=$( pvs --noheadings -o pv_name,vg_name | awk "\$2 ~ /^$_ROOT_VG\$/ { print \$1 }" )
-fi
-
-_VG_EXISTS=
-if [ -z "$VG" ]; then
-  if [ -n "$_ROOT_VG" ]; then
-    VG=$_ROOT_VG
-    _VG_EXISTS=1
-  fi
-else
-  if vg_exists "$VG";then
-    _VG_EXISTS=1
-  fi
-fi
+determine_rootfs_pvs_vg
 
 if [ $_RESET -eq 1 ]; then
     reset_storage
