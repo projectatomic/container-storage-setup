@@ -220,16 +220,19 @@ get_config_options() {
 }
 
 write_storage_config_file () {
+  local storage_driver=$1
+  local storage_out_file=$2
   local storage_options
-  if ! storage_options=$(get_config_options $STORAGE_DRIVER); then
+
+  if ! storage_options=$(get_config_options $storage_driver); then
       return 1
   fi
 
-  cat <<EOF > ${_STORAGE_OUT_FILE}.tmp
+  cat <<EOF > ${storage_out_file}.tmp
 $storage_options
 EOF
 
-  mv -Z ${_STORAGE_OUT_FILE}.tmp ${_STORAGE_OUT_FILE}
+  mv -Z ${storage_out_file}.tmp ${storage_out_file}
 }
 
 convert_size_in_bytes() {
@@ -490,13 +493,13 @@ setup_lvm_thin_pool () {
   if ! lvm_pool_exists $thinpool_name; then
     [ -n "$_DOCKER_COMPAT_MODE" ] && check_docker_storage_metadata
     create_lvm_thin_pool
-    write_storage_config_file
+    [ -n "$_STORAGE_OUT_FILE" ] &&  write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
   else
     # At this point /etc/sysconfig/docker-storage file should exist. If user
     # deleted this file accidently without deleting thin pool, recreate it.
-    if [ ! -f "${_STORAGE_OUT_FILE}" ];then
+    if [ -n "$_STORAGE_OUT_FILE" && ! -f "${_STORAGE_OUT_FILE}" ];then
       Info "${_STORAGE_OUT_FILE} file is missing. Recreating it."
-      write_storage_config_file
+      write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
     fi
   fi
 
@@ -1089,7 +1092,7 @@ setup_storage() {
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     setup_lvm_thin_pool
   else
-      write_storage_config_file
+      write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
   fi
 
   # If container root is on a separate volume, setup that.
