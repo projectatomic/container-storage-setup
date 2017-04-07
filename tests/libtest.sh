@@ -1,5 +1,43 @@
 #!/bin/bash
 
+create_partition_sfdisk(){
+  local dev="$1" size
+  # Use a single partition of a whole device
+  # TODO:
+  #   * Consider gpt, or unpartitioned volumes
+  #   * Error handling when partition(s) already exist
+  #   * Deal with loop/nbd device names. See growpart code
+  size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
+    cat <<EOF | sfdisk $dev
+unit: sectors
+
+start=     2048, size=  ${size}, Id=8e
+EOF
+}
+
+create_partition_parted(){
+  local dev="$1"
+  parted $dev --script mklabel msdos mkpart primary 0% 100% set 1 lvm on
+}
+
+# Partition a block device.
+create_partition() {
+  local dev="$1" part
+
+  if [ -x "/usr/sbin/parted" ]; then
+    create_partition_parted $dev
+  else
+    create_partition_sfdisk $dev
+  fi
+
+  # Sometimes on slow storage it takes a while for partition device to
+  # become available. Wait for device node to show up.
+  if ! udevadm settle;then
+    return 1
+  fi
+  return 0
+}
+
 # Tests if the volume group vg_name exists
 vg_exists() {
   local vg vg_name="$1"
@@ -21,10 +59,10 @@ lv_exists() {
 }
 
 remove_pvs() {
-  local dev devs=$1
-  # Assume $dev1 is pv to remove.
+  local dev devs=$1 pv
   for dev in $devs; do
-    pvremove -y ${dev}1 >> $LOGS 2>&1
+    pv=$(lsblk -npl -o NAME "$dev" | tail -n +2 | head -1)
+    pvremove -y ${pv} >> $LOGS 2>&1
   done
 }
 
@@ -59,7 +97,7 @@ remove_partitions() {
 wipe_signatures() {
   local dev devs=$1
   for dev in $devs; do
-    wipefs -a $dev >> $LOGS 2>&1
+    wipefs -f -a $dev >> $LOGS 2>&1
   done
 }
 
