@@ -614,13 +614,24 @@ vg_exists() {
 }
 
 is_block_dev_partition() {
-  local bdev=$1
+  local bdev=$1 devparent
 
   if ! disktype=$(lsblk -n --nodeps --output type ${bdev}); then
     Fatal "Failed to run lsblk on device $bdev"
   fi
 
   if [ "$disktype" == "part" ];then
+    return 0
+  fi
+
+  # For loop device partitions, lsblk reports type as "loop" and not "part".
+  # So check if device has a parent in the tree and if it does, there are high
+  # chances it is partition (except the case of lvm volumes)
+  if ! devparent=$(lsblk -npls -o NAME ${bdev}|tail -n +2); then
+    Fatal "Failed to run lsblk on device $bdev"
+  fi
+
+  if [ -n "$devparent" ];then
     return 0
   fi
 
@@ -692,10 +703,9 @@ scan_disks() {
   local new_disks=""
 
   for dev in $disk_list; do
-    local basename=$(basename $dev)
-    local p
+    local part=$(dev_query_first_child $dev)
 
-    if is_dev_part_of_vg ${dev}1 $vg; then
+    if [ -n "$part" ] && is_dev_part_of_vg ${part} $vg; then
       Info "Device ${dev} is already partitioned and is part of volume group $VG"
       continue
     fi
@@ -708,8 +718,7 @@ scan_disks() {
     fi
 
     # If device does not have partitions, it is a new disk requiring processing.
-    p=$(awk "\$4 ~ /${basename}./ {print \$4}" /proc/partitions)
-    if [[ -z "$p" ]]; then
+    if [[ -z "$part" ]]; then
       new_disks="$dev $new_disks"
       continue
     fi
@@ -731,7 +740,7 @@ create_partition_sfdisk(){
     cat <<EOF | sfdisk $dev
 unit: sectors
 
-${dev}1 : start=     2048, size=  ${size}, Id=8e
+start=     2048, size=  ${size}, Id=8e
 EOF
 }
 
@@ -741,7 +750,7 @@ create_partition_parted(){
 }
 
 create_partition() {
-  local dev="$1"
+  local dev="$1" part
 
   if [ -x "/usr/sbin/parted" ]; then
     create_partition_parted $dev
@@ -755,26 +764,33 @@ create_partition() {
     Fatal "udevadm settle after partition creation failed. Exiting."
   fi
 
-  if ! wait_for_dev ${dev}1; then
-    Fatal "Partition device ${dev}1 is not available"
+  part=$(dev_query_first_child $dev)
+
+  if ! wait_for_dev ${part}; then
+    Fatal "Partition device ${part} is not available"
   fi
 }
 
+dev_query_first_child() {
+  lsblk -npl -o NAME "$1" | tail -n +2 | head -1
+}
+
 create_disk_partitions() {
-  local devs="$1"
+  local devs="$1" part
 
   for dev in $devs; do
     create_partition $dev
+    part=$(dev_query_first_child $dev)
 
     # By now we have ownership of disk and we have checked there are no
     # signatures on disk or signatures should be wiped. Don't care
     # about any signatures found in the middle of disk after creating
     # partition and wipe signatures if any are found.
-    if ! wipefs -f -a ${dev}1; then
-      Fatal "Failed to wipe signatures on device ${dev}1"
+    if ! wipefs -f -a ${part}; then
+      Fatal "Failed to wipe signatures on device ${part}"
     fi
-    pvcreate ${dev}1
-    _PVS="$_PVS ${dev}1"
+    pvcreate ${part}
+    _PVS="$_PVS ${part}"
   done
 }
 
