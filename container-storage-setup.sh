@@ -770,7 +770,7 @@ create_disk_partitions() {
     # signatures on disk or signatures should be wiped. Don't care
     # about any signatures found in the middle of disk after creating
     # partition and wipe signatures if any are found.
-    if ! wipefs -a ${dev}1; then
+    if ! wipefs -f -a ${dev}1; then
       Fatal "Failed to wipe signatures on device ${dev}1"
     fi
     pvcreate ${dev}1
