@@ -776,9 +776,9 @@ canonicalize_block_devs() {
   local devs_list
 
   if [ "$_DOCKER_COMPAT_MODE" == "1" ];then
-    devs_list=$(canonicalize_block_devs_compat "$input_dev_list")
+    devs_list=$(canonicalize_block_devs_compat "$input_dev_list") || return 1
   else
-    devs_list=$(canonicalize_block_devs_generic "$input_dev_list")
+    devs_list=$(canonicalize_block_devs_generic "$input_dev_list") || return 1
   fi
   echo $devs_list
 }
@@ -1323,11 +1323,11 @@ partition_disks_create_vg() {
   # If there is no volume group specified or no root volume group, there is
   # nothing to do in terms of dealing with disks.
   if [[ -n "$DEVS" && -n "$VG" ]]; then
-    _DEVS_RESOLVED=$(canonicalize_block_devs "${DEVS}")
+    _DEVS_RESOLVED=$(canonicalize_block_devs "${DEVS}") || return 1
 
     # If all the disks have already been correctly partitioned, there is
     # nothing more to do
-    dev_list=$(scan_disks "$_DEVS_RESOLVED" "$VG" "$WIPE_SIGNATURES")
+    dev_list=$(scan_disks "$_DEVS_RESOLVED" "$VG" "$WIPE_SIGNATURES") || return 1
     if [[ -n "$dev_list" ]]; then
       for dev in $dev_list; do
         check_wipe_block_dev_sig $dev
