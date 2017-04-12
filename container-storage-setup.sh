@@ -55,7 +55,7 @@ _STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 # Command related variables
-_COMMAND_LIST="create activate deactivate remove list"
+_COMMAND_LIST="create activate deactivate remove list export"
 _COMMAND=""
 
 _PIPE1=/run/css-$$-fifo1
@@ -1375,6 +1375,7 @@ usage() {
       deactivate	Deactivate storage configuration
       remove		Remove storage configuration
       list		List storage configuration
+      export		Send storage configuration output file to stdout
 FOE
 }
 
@@ -1972,6 +1973,58 @@ process_command_list() {
 # list command processing end
 #
 
+#
+# export command processing start
+#
+run_command_export() {
+  local metafile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME"
+  local outfile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_OUTFILE_NAME"
+
+  [ ! -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME does not exist"
+
+  [ ! -e "$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME metadata does not exist"
+
+  [ ! -e "$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME output file does not exist"
+
+  cat $outfile_path
+}
+
+export_help() {
+  cat <<-FOE
+    Usage: $1 export [OPTIONS] CONFIG_NAME
+
+    Export storage configuration output file on stdout
+
+    Options:
+      -h, --help	Print help message
+FOE
+}
+
+process_command_export() {
+  local command="$1"
+  local command_opts=${command#"export "}
+
+  parsed_opts=`getopt -o h -l help  -- $command_opts`
+  eval set -- "$parsed_opts"
+  while true ; do
+    case "$1" in
+        -h | --help)  export_help $(basename $0); exit 0;;
+        --) shift; break;;
+    esac
+  done
+
+  case $# in
+    1)
+       _CONFIG_NAME=$1
+      ;;
+    *)
+      export_help $(basename $0); exit 0;;
+  esac
+}
+
+#
+# export command processing end
+#
 
 #
 # Start of create command processing
@@ -2111,6 +2164,10 @@ parse_subcommands() {
       process_command_list "$subcommand_str"
       _COMMAND="list"
       ;;
+    export)
+      process_command_export "$subcommand_str"
+      _COMMAND="export"
+      ;;
     *)
       Error "Unknown command $subcommand"
       usage
@@ -2211,6 +2268,9 @@ case $_COMMAND in
     ;;
   list)
     run_command_list
+    ;;
+  export)
+    run_command_export
     ;;
   *)
     run_docker_compatibility_code
