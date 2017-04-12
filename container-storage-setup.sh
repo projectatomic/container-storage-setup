@@ -48,9 +48,8 @@ _PIPE1=/run/css-$$-fifo1
 _PIPE2=/run/css-$$-fifo2
 _TEMPDIR=$(mktemp --tmpdir -d)
 
-# DEVS can have device names without absolute path. Convert these to absolute
-# paths and save in ABS_DEVS and use in rest of the code.
-_DEVS_ABS=""
+# Keeps track of resolved device paths
+_DEVS_RESOLVED=""
 
 # Will have currently configured storage options in ${_STORAGE_OUT_FILE}
 _CURRENT_STORAGE_OPTIONS=""
@@ -340,7 +339,7 @@ check_min_data_size_condition() {
 }
 
 create_lvm_thin_pool () {
-  if [ -z "$_DEVS_ABS" ] && [ -z "$_VG_EXISTS" ]; then
+  if [ -z "$_DEVS_RESOLVED" ] && [ -z "$_VG_EXISTS" ]; then
     Fatal "Specified volume group $VG does not exist, and no devices were specified"
   fi
 
@@ -692,10 +691,8 @@ check_wipe_block_dev_sig() {
   done <<< "$sig"
 }
 
-# Make sure passed in devices are valid block devies. Also make sure they
-# are not partitions. Names which are of the form "sdb", convert them to
-# their absolute path for processing in rest of the script.
-canonicalize_block_devs() {
+# This is used in compatibility mode
+canonicalize_block_devs_compat() {
   local devs=$1 dev
   local devs_abs dev_abs
   local dest_dev
@@ -722,6 +719,47 @@ canonicalize_block_devs() {
 
   # Return list of devices to caller.
   echo "$devs_abs"
+}
+
+# This is used in config creation mode
+canonicalize_block_devs_generic() {
+  local devs=$1 dev
+  local devs_resolved resolved_device
+
+  for dev in ${devs}; do
+    if ! resolved_device=$(realpath -e $dev);then
+        Fatal "Failed to resolve path for device ${dev}"
+    fi
+
+    [ ! -b "$resolved_device" ] && Fatal "$resolved_device is not a valid block device."
+
+    if is_block_dev_partition ${resolved_device}; then
+      Fatal "Partition specification unsupported at this time."
+    fi
+    if [ -n "$devs_resolved" ]; then
+      devs_resolved="$devs_resolved $resolved_device"
+    else
+      devs_resolved="$resolved_device"
+    fi
+  done
+
+  # Return list of devices to caller.
+  echo "$devs_resolved"
+}
+
+# Make sure passed in devices are valid block devies. Also make sure they
+# are not partitions. Names which are of the form "sdb", convert them to
+# their absolute path for processing in rest of the script.
+canonicalize_block_devs() {
+  local input_dev_list="$1"
+  local devs_list
+
+  if [ "$_DOCKER_COMPAT_MODE" == "1" ];then
+    devs_list=$(canonicalize_block_devs_compat "$input_dev_list")
+  else
+    devs_list=$(canonicalize_block_devs_generic "$input_dev_list")
+  fi
+  echo $devs_list
 }
 
 # Scans all the disks listed in DEVS= and returns the disks which are not
@@ -1259,11 +1297,11 @@ partition_disks_create_vg() {
   # If there is no volume group specified or no root volume group, there is
   # nothing to do in terms of dealing with disks.
   if [[ -n "$DEVS" && -n "$VG" ]]; then
-    _DEVS_ABS=$(canonicalize_block_devs "${DEVS}")
+    _DEVS_RESOLVED=$(canonicalize_block_devs "${DEVS}")
 
     # If all the disks have already been correctly partitioned, there is
     # nothing more to do
-    dev_list=$(scan_disks "$_DEVS_ABS" "$VG" "$WIPE_SIGNATURES")
+    dev_list=$(scan_disks "$_DEVS_RESOLVED" "$VG" "$WIPE_SIGNATURES")
     if [[ -n "$dev_list" ]]; then
       for dev in $dev_list; do
         check_wipe_block_dev_sig $dev
