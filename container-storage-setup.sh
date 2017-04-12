@@ -30,6 +30,11 @@ _CSS_EXTRA_VERSION=""
 _CSS_VERSION="${_CSS_MAJOR_VERSION}.${_CSS_MINOR_VERSION}.${_CSS_SUBLEVEL}"
 [ -n "$_CSS_EXTRA_VERSION" ] && _CSS_VERSION="${_CSS_VERSION}-${_CSS_EXTRA_VERSION}"
 
+# Locking related
+_LOCKFD=300
+_LOCKDIR="/var/lock/container-storage-setup"
+_LOCKFILE="lock"
+
 _CONFIG_NAME=""
 _CONFIG_DIR="/var/lib/container-storage-setup/"
 
@@ -2294,7 +2299,34 @@ process_input_str() {
 # END of helper functions dealing with commands and storage setup for new design
 #
 
+#
+# Start helper functions for locking
+#
+prepare_locking() {
+  mkdir -p $_LOCKDIR
+  eval "exec $_LOCKFD>"${_LOCKDIR}/$_LOCKFILE""
+  # Supress lvm warnings about leaked file descriptor.
+  export LVM_SUPPRESS_FD_WARNINGS=1
+}
 
+acquire_lock() {
+  local timeout=60
+
+  while [ $timeout -gt 0 ];do
+    flock -n $_LOCKFD && return 0
+    timeout=$((timeout-1))
+    Info "Waiting to acquire lock ${_LOCKDIR}/$_LOCKFILE"
+    sleep 1
+  done
+
+  Error "Timed out while waiting to acquire lock ${_LOCKDIR}/$_LOCKFILE"
+  return 1
+}
+
+
+#
+# End helper functions for locking
+#
 # Source library. If there is a library present in same dir as d-s-s, source
 # that otherwise fall back to standard library. This is useful when modifyin
 # libcss.sh in git tree and testing d-s-s.
@@ -2350,6 +2382,9 @@ fi
 if [ -e "${_STORAGE_IN_FILE}" ]; then
   source ${_STORAGE_IN_FILE}
 fi
+
+# Take lock only in new mode and not compatibility mode
+[ -z "$_DOCKER_COMPAT_MODE" ] && { prepare_locking; acquire_lock; }
 
 case $_COMMAND in
   create)
