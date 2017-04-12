@@ -30,6 +30,16 @@ _CSS_EXTRA_VERSION=""
 _CSS_VERSION="${_CSS_MAJOR_VERSION}.${_CSS_MINOR_VERSION}.${_CSS_SUBLEVEL}"
 [ -n "$_CSS_EXTRA_VERSION" ] && _CSS_VERSION="${_CSS_VERSION}-${_CSS_EXTRA_VERSION}"
 
+_CONFIG_NAME=""
+_CONFIG_DIR="/var/lib/container-storage-setup/"
+
+# Metadata related stuff
+_METADATA_VERSION=1
+_INFILE_NAME="infile"
+_OUTFILE_NAME="outfile"
+_METAFILE_NAME="metadata"
+_STATUSFILE_NAME="status"
+
 # This section reads the config file $INPUTFILE
 # Read man page for a description of currently supported options:
 # 'man container-storage-setup'
@@ -1342,6 +1352,56 @@ usage() {
       --version Print version information.
 FOE
 }
+
+#
+# START of Helper functions dealing with commands and storage setup for new
+# design
+#
+# Functions dealing with metadata handling
+create_metadata() {
+  local metafile=$1
+
+  cat > ${metafile}.tmp <<-EOF
+	_M_METADATA_VERSION=$_METADATA_VERSION
+	_M_STORAGE_DRIVER=$STORAGE_DRIVER
+	_M_VG=$VG
+	_M_VG_CREATED=$_VG_CREATED
+	_M_DEVS_RESOLVED="$_DEVS_RESOLVED"
+	_M_CONTAINER_THINPOOL=$CONTAINER_THINPOOL
+	_M_CONTAINER_ROOT_LV_NAME=$CONTAINER_ROOT_LV_NAME
+	_M_CONTAINER_ROOT_LV_MOUNT_PATH=$CONTAINER_ROOT_LV_MOUNT_PATH
+	_M_AUTO_EXTEND_POOL=$AUTO_EXTEND_POOL
+	_M_DEVICE_WAIT_TIMEOUT=$DEVICE_WAIT_TIMEOUT
+EOF
+  mv ${metafile}.tmp ${metafile}
+}
+
+set_config_status() {
+  local config_name=$1
+  local status=$2
+  local status_file="$_CONFIG_DIR/$config_name/$_STATUSFILE_NAME"
+
+  mkdir -p "$_CONFIG_DIR/$config_name"
+  echo "$status" > ${status_file}.tmp
+  mv ${status_file}.tmp ${status_file}
+}
+
+create_storage_config() {
+  local config_path=$1
+  local infile=$2
+
+  mkdir -p $config_path
+  cp $infile $config_path/$_INFILE_NAME
+  touch $config_path/$_METAFILE_NAME
+
+  create_metadata "$config_path/$_METAFILE_NAME"
+  write_storage_config_file "$STORAGE_DRIVER" "$config_path/$_OUTFILE_NAME"
+}
+
+#
+# END of helper functions dealing with commands and storage setup for new design
+#
+
 
 # Source library. If there is a library present in same dir as d-s-s, source
 # that otherwise fall back to standard library. This is useful when modifyin
