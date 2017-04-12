@@ -55,7 +55,7 @@ _STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 # Command related variables
-_COMMAND_LIST="create activate deactivate"
+_COMMAND_LIST="create activate deactivate remove"
 _COMMAND=""
 
 _PIPE1=/run/css-$$-fifo1
@@ -438,7 +438,7 @@ run_docker_compatibility_code() {
   determine_rootfs_pvs_vg
 
   if [ $_RESET -eq 1 ]; then
-    reset_storage
+    reset_storage_compat
     exit 0
   fi
 
@@ -474,7 +474,8 @@ remove_systemd_mount_target () {
   fi
 }
 
-reset_extra_volume () {
+# This is used in compatibility mode.
+reset_extra_volume_compat () {
   local mp filename
   local lv_name=$1
   local mount_dir=$2
@@ -1337,16 +1338,17 @@ partition_disks_create_vg() {
   fi
 }
 
-reset_storage() {
+# This is used in compatibility mode.
+reset_storage_compat() {
   if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
-    reset_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH $VG
+    reset_extra_volume_compat $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH $VG
   fi
 
   if [ "$DOCKER_ROOT_VOLUME" == "yes" ];then
     if ! get_docker_root_dir; then
       return 1
     fi
-    reset_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR $VG
+    reset_extra_volume_compat $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR $VG
   fi
 
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
@@ -1371,6 +1373,7 @@ usage() {
       create		Create storage configuration
       activate		Activate storage configuration
       deactivate	Deactivate storage configuration
+      remove		Remove storage configuration
 FOE
 }
 
@@ -1405,6 +1408,15 @@ set_config_status() {
   mkdir -p "$_CONFIG_DIR/$config_name"
   echo "$status" > ${status_file}.tmp
   mv ${status_file}.tmp ${status_file}
+}
+
+get_config_status() {
+  local config_name=$1
+  local status_file="$_CONFIG_DIR/$config_name/$_STATUSFILE_NAME"
+  local curr_status
+
+  curr_status=`cat $status_file`
+  echo $curr_status
 }
 
 create_storage_config() {
@@ -1728,6 +1740,121 @@ process_command_deactivate() {
 #
 
 #
+# Remove command processing start
+#
+reset_extra_volume() {
+  local mp filename
+  local lv_name=$1
+  local mount_dir=$2
+  local vg=$3
+
+  if ! extra_volume_exists $lv_name $vg; then
+     return 0
+  fi
+
+  mp=$(extra_lv_mountpoint $vg $lv_name $mount_dir)
+  if [ -n "$mp" ];then
+    if ! umount $mp >/dev/null 2>&1; then
+      Fatal "Failed to unmount $mp"
+    fi
+  fi
+  lvchange -an $vg/${lv_name}
+  lvremove $vg/${lv_name}
+}
+
+# Remove command processing
+reset_storage() {
+  local resolved_path
+
+  # Populate $_RESOLVED_MOUNT_DIR_PATH
+  if [ -n "$_M_CONTAINER_ROOT_LV_MOUNT_PATH" ];then
+    if ! resolved_path=$(realpath $_M_CONTAINER_ROOT_LV_MOUNT_PATH);then
+      Error "Failed to resolve path $_M_CONTAINER_ROOT_LV_MOUNT_PATH"
+      return 1
+    fi
+
+    if ! reset_extra_volume $_M_CONTAINER_ROOT_LV_NAME $resolved_path $_M_VG;then
+      Error "Failed to remove volume $_M_CONTAINER_ROOT_LV_NAME"
+      return 1
+    fi
+  fi
+
+  if [ "$_M_STORAGE_DRIVER" == "devicemapper" ]; then
+    if ! reset_lvm_thin_pool $_M_CONTAINER_THINPOOL $_M_VG; then
+      Error "Failed to remove thinpool $_M_VG/$_M_CONTAINER_THINPOOL"
+      return 1
+    fi
+  fi
+
+  # Get rid of config data
+  rm -rf "$_CONFIG_DIR/$_CONFIG_NAME/"
+}
+
+run_command_remove() {
+  local metafile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME"
+  local curr_status
+
+  [ ! -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME does not exist"
+
+  # Source stored metadata file.
+  [ ! -e "$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME metadata does not exist"
+
+  source "$metafile_path"
+
+  # If storage is active, deactivate it first
+  curr_status=$(get_config_status "$_CONFIG_NAME")
+  if [ "$curr_status" == "active" ];then
+    if ! run_command_deactivate; then
+       Fatal "Failed to remove storage config $_CONFIG_NAME"
+    fi
+  fi
+
+  set_config_status "$_CONFIG_NAME" "invalid"
+  if ! reset_storage; then
+    Fatal "Failed to remove storage config $_CONFIG_NAME"
+  fi
+
+  echo "Removed storage configuration $_CONFIG_NAME"
+}
+
+remove_help() {
+  cat <<-FOE
+    Usage: $1 remove [OPTIONS] CONFIG_NAME
+
+    Remove storage configuration specified by CONFIG_NAME
+
+    Options:
+      -h, --help	Print help message
+FOE
+}
+
+process_command_remove() {
+  local command="$1"
+  local command_opts=`echo "$command" | sed 's/remove //'`
+
+  parsed_opts=`getopt -o h -l help  -- $command_opts`
+  eval set -- "$parsed_opts"
+  while true ; do
+    case "$1" in
+        -h | --help)  remove_help $(basename $0); exit 0;;
+        --) shift; break;;
+    esac
+  done
+
+  case $# in
+    1)
+       _CONFIG_NAME=$1
+      ;;
+    *)
+      remove_help $(basename $0); exit 0;;
+  esac
+}
+
+#
+# Remove command processing end
+#
+
+#
 # Start of create command processing
 #
 setup_lvm_thin_pool () {
@@ -1857,6 +1984,10 @@ parse_subcommands() {
       process_command_deactivate "$subcommand_str"
       _COMMAND="deactivate"
       ;;
+    remove)
+      process_command_remove "$subcommand_str"
+      _COMMAND="remove"
+      ;;
     *)
       Error "Unknown command $subcommand"
       usage
@@ -1951,6 +2082,9 @@ case $_COMMAND in
     ;;
   deactivate)
     run_command_deactivate
+    ;;
+  remove)
+    run_command_remove
     ;;
   *)
     run_docker_compatibility_code
