@@ -55,7 +55,7 @@ _STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 # Command related variables
-_COMMAND_LIST="create activate deactivate remove"
+_COMMAND_LIST="create activate deactivate remove list"
 _COMMAND=""
 
 _PIPE1=/run/css-$$-fifo1
@@ -1374,6 +1374,7 @@ usage() {
       activate		Activate storage configuration
       deactivate	Deactivate storage configuration
       remove		Remove storage configuration
+      list		List storage configuration
 FOE
 }
 
@@ -1855,6 +1856,124 @@ process_command_remove() {
 #
 
 #
+# list command processing start
+#
+list_all_configs() {
+  local all_configs=$(ls "$_CONFIG_DIR" 2>/dev/null)
+  local config_name storage_driver
+  local status_file curr_status metadata_file
+
+  [ -z "$all_configs" ] && return 0
+
+  printf "%-24s %-16s %-16s\n" "NAME" "DRIVER" "STATUS"
+  for config_name in $all_configs; do
+    status_file="$_CONFIG_DIR/$config_name/$_STATUSFILE_NAME"
+    metadata_file="$_CONFIG_DIR/$config_name/$_METAFILE_NAME"
+    curr_status=`cat $status_file`
+    storage_driver=`grep _M_STORAGE_DRIVER $metadata_file | cut -d "=" -f2`
+
+    printf "%-24s %-16s %-16s\n" "$config_name" "$storage_driver" "$curr_status"
+  done
+}
+
+#TODO: What should be listed in what format
+list_overlay_params() {
+  echo "VG=$_M_VG"
+  echo "DEVS=$_M_DEVS_RESOLVED"
+  echo "CONTAINER_ROOT_LV_NAME=$_M_CONTAINER_ROOT_LV_NAME"
+  echo "CONTAINER_ROOT_LV_MOUNT_PATH=$_M_CONTAINER_ROOT_LV_MOUNT_PATH"
+}
+
+list_devicemapper_params() {
+  echo "VG=$_M_VG"
+  echo "DEVS=\"$_M_DEVS_RESOLVED\""
+  echo "CONTAINER_THINPOOL=$_M_CONTAINER_THINPOOL"
+  echo "CONTAINER_ROOT_LV_NAME=$_M_CONTAINER_ROOT_LV_NAME"
+  echo "CONTAINER_ROOT_LV_MOUNT_PATH=$_M_CONTAINER_ROOT_LV_MOUNT_PATH"
+  echo "AUTO_EXTEND_POOL=$_M_AUTO_EXTEND_POOL"
+  echo "DEVICE_WAIT_TIMEOUT=$_M_DEVICE_WAIT_TIMEOUT"
+}
+
+list_config() {
+  local config_name=$1
+  local status_file curr_status
+
+  status_file="$_CONFIG_DIR/$config_name/$_STATUSFILE_NAME"
+  curr_status=`cat $status_file`
+
+  echo "Name: $config_name"
+  echo "Status: $curr_status"
+
+  echo "STORAGE_DRIVER=$_M_STORAGE_DRIVER"
+
+  if [ "$_M_STORAGE_DRIVER" == "" ]; then
+    return 0
+  elif [ "$_M_STORAGE_DRIVER" == "overlay" ]  || [ "$_M_STORAGE_DRIVER" == "overlay2" ];then
+    list_overlay_params
+  else
+    list_devicemapper_params
+  fi
+  return 0
+}
+
+run_command_list() {
+  if [ -z "$_CONFIG_NAME" ]; then
+    list_all_configs
+    return
+  fi
+
+  local metafile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME"
+
+  [ ! -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME does not exist"
+
+  # Source stored metadata file.
+  [ ! -e "$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME metadata does not exist"
+
+  source "$metafile_path"
+  list_config "$_CONFIG_NAME"
+}
+
+list_help() {
+  cat <<-FOE
+    Usage: $1 list [OPTIONS] [CONFIG_NAME]
+
+    List storage configuration
+
+    Options:
+      -h, --help	Print help message
+FOE
+}
+
+process_command_list() {
+  local command="$1"
+  local command_opts=${command#"list"}
+
+  parsed_opts=`getopt -o h -l help  -- $command_opts`
+  eval set -- "$parsed_opts"
+  while true ; do
+    case "$1" in
+        -h | --help)  list_help $(basename $0); exit 0;;
+        --) shift; break;;
+    esac
+  done
+
+  case $# in
+    0)
+      ;;
+    1)
+       _CONFIG_NAME=$1
+      ;;
+    *)
+      list_help $(basename $0); exit 0;;
+  esac
+}
+
+#
+# list command processing end
+#
+
+
+#
 # Start of create command processing
 #
 setup_lvm_thin_pool () {
@@ -1988,6 +2107,10 @@ parse_subcommands() {
       process_command_remove "$subcommand_str"
       _COMMAND="remove"
       ;;
+    list)
+      process_command_list "$subcommand_str"
+      _COMMAND="list"
+      ;;
     *)
       Error "Unknown command $subcommand"
       usage
@@ -2085,6 +2208,9 @@ case $_COMMAND in
     ;;
   remove)
     run_command_remove
+    ;;
+  list)
+    run_command_list
     ;;
   *)
     run_docker_compatibility_code
