@@ -412,6 +412,33 @@ systemd_escaped_filename () {
 }
 
 
+# Compatibility mode code
+run_docker_compatibility_code() {
+  # Verify storage options set correctly in input files
+  check_storage_options
+
+  determine_rootfs_pvs_vg
+
+  if [ $_RESET -eq 1 ]; then
+    reset_storage
+    exit 0
+  fi
+
+  partition_disks_create_vg
+  grow_root_pvs
+
+  # NB: We are growing root here first, because when root and docker share a
+  # disk, we'll default to giving some portion of remaining space to docker.
+  # Do this operation only if root is on a logical volume.
+  [ -n "$_ROOT_VG" ] && grow_root_lv_fs
+
+  if is_old_data_meta_mode; then
+    Fatal "Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
+  fi
+
+  setup_storage
+}
+
 #
 # In the past we created a systemd mount target file, we no longer
 # use it, but if one pre-existed we still need to handle it.
@@ -1335,26 +1362,4 @@ if [ -e "${_STORAGE_IN_FILE}" ]; then
   source ${_STORAGE_IN_FILE}
 fi
 
-# Verify storage options set correctly in input files
-check_storage_options
-
-determine_rootfs_pvs_vg
-
-if [ $_RESET -eq 1 ]; then
-    reset_storage
-    exit 0
-fi
-
-partition_disks_create_vg
-grow_root_pvs
-
-# NB: We are growing root here first, because when root and docker share a
-# disk, we'll default to giving some portion of remaining space to docker.
-# Do this operation only if root is on a logical volume.
-[ -n "$_ROOT_VG" ] && grow_root_lv_fs
-
-if is_old_data_meta_mode; then
-  Fatal "Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
-fi
-
-setup_storage
+run_docker_compatibility_code
