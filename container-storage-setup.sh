@@ -55,7 +55,7 @@ _STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 # Command related variables
-_COMMAND_LIST="create activate"
+_COMMAND_LIST="create activate deactivate"
 _COMMAND=""
 
 _PIPE1=/run/css-$$-fifo1
@@ -1368,8 +1368,9 @@ usage() {
       --version Print version information.
 
     Commands:
-      create	Create storage configuration
-      activate	Activate storage configuration
+      create		Create storage configuration
+      activate		Activate storage configuration
+      deactivate	Deactivate storage configuration
 FOE
 }
 
@@ -1607,6 +1608,124 @@ process_command_activate() {
 }
 # activate command processing end
 
+#
+# deactivate command processing start
+#
+deactivate_devicemapper() {
+  local thinpool_name=$1
+  local vg=$2
+
+  # Deactivate thin pool
+  if ! lvchange -an $vg/$thinpool_name; then
+    Error "Thin pool $vg/$thinpool_name deactivation failed"
+    return 1
+  fi
+  return 0
+}
+
+deactivate_storage_driver() {
+  local driver=$1
+
+  if ! is_valid_storage_driver $driver; then
+    Error "Invalid storage driver $driver"
+    return 1
+  fi
+
+  [ "$driver" == "" ] && return 0
+  [ "$driver" == "overlay" -o "$driver" == "overlay2" ] && return 0
+
+  if [ "$driver" == "devicemapper" ];then
+    if ! deactivate_devicemapper $_M_CONTAINER_THINPOOL $_M_VG; then
+      Error "Deactivation of driver $driver failed"
+     return 1
+    fi
+  fi
+}
+
+deactivate_extra_lv_fs() {
+  local lv_name=$1
+  local vg=$2
+  local mount_path=$3
+
+  if mountpoint -q $mount_path; then
+    if ! umount $mount_path; then
+      Error "Failed to unmount $mount_path"
+      return 1
+    fi
+  fi
+
+  #TODO: Most likely we will have to try deactivation in a loop to make
+  # sure any udev rules have run and now lv is not busy.
+
+  if ! lvchange -an $vg/$lv_name; then
+    Error "Failed to deactivate $vg/$lv_name"
+    return 1
+  fi
+}
+
+run_command_deactivate() {
+  local resolved_path
+  local metafile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME"
+
+  [ ! -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME does not exist"
+
+  [ ! -e "$metafile_path" ] && Fatal "Storage configuration $_CONFIG_NAME metadata does not exist"
+  source "$metafile_path"
+
+  if ! deactivate_storage_driver $_M_STORAGE_DRIVER; then
+	  Fatal "Deactivation of storage config $_CONFIG_NAME failed"
+  fi
+
+  if [ -n "$_M_CONTAINER_ROOT_LV_MOUNT_PATH" ];then
+    if ! resolved_path=$(realpath $_M_CONTAINER_ROOT_LV_MOUNT_PATH);then
+      Fatal "Failed to resolve path $_M_CONTAINER_ROOT_LV_MOUNT_PATH"
+    fi
+
+    if ! deactivate_extra_lv_fs $_M_CONTAINER_ROOT_LV_NAME $_M_VG $resolved_path; then
+      Fatal "Deactivation of storage config $_CONFIG_NAME failed"
+    fi
+  fi
+
+  set_config_status "$_CONFIG_NAME" "inactive"
+  echo "Deactivated storage config $_CONFIG_NAME"
+}
+
+deactivate_help() {
+  cat <<-FOE
+    Usage: $1 deactivate [OPTIONS] CONFIG_NAME
+
+    De-activate storage configuration specified by CONFIG_NAME
+
+    Options:
+      -h, --help	Print help message
+FOE
+}
+
+process_command_deactivate() {
+  local command="$1"
+  local command_opts=`echo "$command" | sed 's/deactivate //'`
+
+  parsed_opts=`getopt -o h -l help -- $command_opts`
+  eval set -- "$parsed_opts"
+  while true ; do
+    case "$1" in
+        -h | --help)  deactivate_help $(basename $0); exit 0;;
+        --) shift; break;;
+    esac
+  done
+
+  case $# in
+    1)
+       _CONFIG_NAME=$1
+      ;;
+    *)
+      deactivate_help $(basename $0); exit 0;;
+  esac
+}
+
+#
+# deactivate command processing end
+#
 
 #
 # Start of create command processing
@@ -1734,6 +1853,10 @@ parse_subcommands() {
       process_command_activate "$subcommand_str"
       _COMMAND="activate"
       ;;
+    deactivate)
+      process_command_deactivate "$subcommand_str"
+      _COMMAND="deactivate"
+      ;;
     *)
       Error "Unknown command $subcommand"
       usage
@@ -1750,7 +1873,7 @@ process_input_str() {
   # that commands options are not parsed as css options by getopt
 
   for i in $_COMMAND_LIST; do
-    if grep $i <<< "$input" > /dev/null 2>&1; then
+    if grep -w $i <<< "$input" > /dev/null 2>&1; then
       echo ${input/$i/-- $i}
       return
     fi
@@ -1825,6 +1948,9 @@ case $_COMMAND in
     ;;
   activate)
     run_command_activate
+    ;;
+  deactivate)
+    run_command_deactivate
     ;;
   *)
     run_docker_compatibility_code
