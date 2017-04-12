@@ -55,7 +55,7 @@ _STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 # Command related variables
-_COMMAND_LIST="create activate deactivate remove list export"
+_COMMAND_LIST="create activate deactivate remove list export add-dev"
 _COMMAND=""
 
 _PIPE1=/run/css-$$-fifo1
@@ -1376,6 +1376,7 @@ usage() {
       remove		Remove storage configuration
       list		List storage configuration
       export		Send storage configuration output file to stdout
+      add-dev		Add block device to storage configuration
 FOE
 }
 
@@ -1399,6 +1400,26 @@ create_metadata() {
 	_M_AUTO_EXTEND_POOL=$AUTO_EXTEND_POOL
 	_M_DEVICE_WAIT_TIMEOUT=$DEVICE_WAIT_TIMEOUT
 EOF
+  mv ${metafile}.tmp ${metafile}
+}
+
+metadata_update_add_dev() {
+  local metafile=$1
+  local new_resolved_dev=$2
+  local updated_resolved_devs
+
+  cp $metafile ${metafile}.tmp
+
+  if [ -z "$_M_DEVS_RESOLVED" ]; then
+    updated_resolved_devs="$new_resolved_dev"
+  else
+    updated_resolved_devs="$_M_DEVS_RESOLVED $new_resolved_dev"
+  fi
+
+  if ! sed -i "s;^_M_DEVS_RESOLVED=.*$;_M_DEVS_RESOLVED=\"${updated_resolved_devs}\";" ${metafile}.tmp;then
+    Error "Failed to update _M_DEVS_RESOLVED in metadata."
+    return 1
+  fi
   mv ${metafile}.tmp ${metafile}
 }
 
@@ -2027,6 +2048,79 @@ process_command_export() {
 #
 
 #
+# add-dev command processing start
+#
+run_command_add_dev() {
+  local metafile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME"
+
+  [ ! -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME does not exist"
+
+  [ ! -e "$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME metadata does not exist"
+
+  source $metafile_path
+
+  [ -z "$_M_VG" ] && Fatal "No volume group is associated with configuration. Can not add disks."
+  VG=$_M_VG
+
+  if ! vg_exists "$VG";then
+    Error "Volume group $VG does not exist."
+    return 1
+  fi
+
+  _VG_EXISTS=1
+  if ! partition_disks_create_vg; then
+    Error "Failed to add device $DEVS to config $_CONFIG_NAME"
+    return 1
+  fi
+
+  if ! metadata_update_add_dev $metafile_path "$DEVS"; then
+    Error "Failed to add device $DEVS to config $_CONFIG_NAME"
+    return 1
+  fi
+
+  echo "Added device $DEVS to storage configuration $_CONFIG_NAME"
+}
+
+add_dev_help() {
+  cat <<-FOE
+    Usage: $1 add-dev [OPTIONS] CONFIG_NAME DEVICE
+
+    Add block device to configuration CONFIG_NAME
+
+    Options:
+      -h, --help	Print help message
+FOE
+}
+
+process_command_add_dev() {
+  local command="$1"
+  local command_opts=${command#"add-dev "}
+
+  parsed_opts=`getopt -o h -l help  -- $command_opts`
+  eval set -- "$parsed_opts"
+  while true ; do
+    case "$1" in
+        -h | --help)  add_dev_help $(basename $0); exit 0;;
+        --) shift; break;;
+    esac
+  done
+
+  case $# in
+    2)
+       _CONFIG_NAME=$1
+       DEVS="$2"
+      ;;
+    *)
+      add_dev_help $(basename $0); exit 0;;
+  esac
+}
+
+#
+# add-dev command processing end
+#
+
+
+#
 # Start of create command processing
 #
 setup_lvm_thin_pool () {
@@ -2168,6 +2262,10 @@ parse_subcommands() {
       process_command_export "$subcommand_str"
       _COMMAND="export"
       ;;
+    add-dev)
+      process_command_add_dev "$subcommand_str"
+      _COMMAND="add-dev"
+      ;;
     *)
       Error "Unknown command $subcommand"
       usage
@@ -2271,6 +2369,9 @@ case $_COMMAND in
     ;;
   export)
     run_command_export
+    ;;
+  add-dev)
+    run_command_add_dev
     ;;
   *)
     run_docker_compatibility_code
