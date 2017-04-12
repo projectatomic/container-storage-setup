@@ -58,6 +58,20 @@ lv_exists() {
   return 1
 }
 
+# Tests if the logical volume lv_name is active
+lv_is_active() {
+  local vg_name=$1
+  local lv_name=$2
+  local lv_attr is_active
+
+  lv_attr=$(lvs -o lv_attr --no-headings $vg_name/$lv_name)
+  lv_attr=${lv_attr#  }
+  is_active=${lv_attr:4:1}
+
+  [ "$is_active" == "a" ] && return 0
+  return 1
+}
+
 remove_pvs() {
   local dev devs=$1 pv
   for dev in $devs; do
