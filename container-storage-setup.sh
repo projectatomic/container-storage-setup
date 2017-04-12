@@ -57,6 +57,9 @@ _CURRENT_STORAGE_OPTIONS=""
 
 _STORAGE_OPTIONS="STORAGE_OPTIONS"
 
+# Keeps track of if we created a volume group or not.
+_VG_CREATED=
+
 get_docker_version() {
   local version
 
@@ -797,6 +800,7 @@ create_disk_partitions() {
 create_extend_volume_group() {
   if [ -z "$_VG_EXISTS" ]; then
     vgcreate $VG $_PVS
+    _VG_CREATED=1
     _VG_EXISTS=1
   else
     # TODO:
