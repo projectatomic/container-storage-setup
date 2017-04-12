@@ -433,7 +433,7 @@ reset_extra_volume () {
   local vg=$3
 
   if extra_volume_exists $lv_name $vg; then
-    mp=$(extra_lv_mountpoint $lv_name $mount_dir)
+    mp=$(extra_lv_mountpoint $vg $lv_name $mount_dir)
     if [ -n "$mp" ];then
       if ! umount $mp >/dev/null 2>&1; then
         Fatal "Failed to unmount $mp"
@@ -932,19 +932,21 @@ extra_volume_exists() {
 # This returns the mountpoint of $1
 extra_lv_mountpoint() {
   local mounts
-  local lv_name=$1
-  local mount_dir=$2
-  mounts=$(findmnt -n -o TARGET --source /dev/$VG/$lv_name | grep $mount_dir)
+  local vg=$1
+  local lv_name=$2
+  local mount_dir=$3
+  mounts=$(findmnt -n -o TARGET --source /dev/$vg/$lv_name | grep $mount_dir)
   echo $mounts
 }
 
 mount_extra_volume() {
-  local lv_name=$1
-  local mount_dir=$2
+  local vg=$1
+  local lv_name=$2
+  local mount_dir=$3
   remove_systemd_mount_target $mount_dir
-  mounts=$(extra_lv_mountpoint $lv_name $mount_dir)
+  mounts=$(extra_lv_mountpoint $vg $lv_name $mount_dir)
   if [ -z "$mounts" ]; then
-      mount /dev/$VG/$lv_name $mount_dir
+      mount /dev/$vg/$lv_name $mount_dir
   fi
 }
 
@@ -976,7 +978,7 @@ setup_extra_volume() {
     Fatal "Failed to create filesystem on /dev/$VG/${lv_name}."
   fi
 
-  if ! mount_extra_volume $lv_name $mount_dir; then
+  if ! mount_extra_volume $VG $lv_name $mount_dir; then
     Fatal "Failed to mount volume ${lv_name} on ${mount_dir}"
   fi
 
@@ -994,7 +996,7 @@ setup_extra_lv_fs() {
     return 1
   fi
   if extra_volume_exists $CONTAINER_ROOT_LV_NAME $VG; then
-    if ! mount_extra_volume $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH; then
+    if ! mount_extra_volume $VG $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH; then
       Fatal "Failed to mount volume $CONTAINER_ROOT_LV_NAME on $_RESOLVED_MOUNT_DIR_PATH"
     fi
     return 0
@@ -1017,7 +1019,7 @@ setup_docker_root_lv_fs() {
     return 1
   fi
   if extra_volume_exists $_DOCKER_ROOT_LV_NAME $VG; then
-    if ! mount_extra_volume $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR; then
+    if ! mount_extra_volume $VG $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR; then
       Fatal "Failed to mount volume $_DOCKER_ROOT_LV_NAME on $_DOCKER_ROOT_DIR"
     fi
     return 0
