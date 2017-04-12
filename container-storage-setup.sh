@@ -54,6 +54,10 @@ _STORAGE_IN_FILE=""
 _STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
+# Command related variables
+_COMMAND_LIST="create"
+_COMMAND=""
+
 _PIPE1=/run/css-$$-fifo1
 _PIPE2=/run/css-$$-fifo2
 _TEMPDIR=$(mktemp --tmpdir -d)
@@ -235,6 +239,11 @@ write_storage_config_file () {
   local storage_driver=$1
   local storage_out_file=$2
   local storage_options
+
+  if [ -z "$storage_driver" ];then
+    touch "$storage_out_file"
+    return 0
+  fi
 
   if ! storage_options=$(get_config_options $storage_driver); then
       return 1
@@ -445,7 +454,7 @@ run_docker_compatibility_code() {
     Fatal "Old mode of passing data and metadata logical volumes to docker is not supported. Exiting."
   fi
 
-  setup_storage
+  setup_storage_compat
 }
 
 #
@@ -500,7 +509,8 @@ reset_lvm_thin_pool () {
   fi
 }
 
-setup_lvm_thin_pool () {
+# This is used in comatibility mode.
+setup_lvm_thin_pool_compat () {
   local tpool
   # Check if a thin pool is already configured in /etc/sysconfig/docker-storage.
   # If yes, wait for that thin pool to come up.
@@ -952,6 +962,10 @@ get_current_storage_options() {
 is_valid_storage_driver() {
   local driver=$1 d
 
+  # Empty driver is valid. That means user does not want us to setup any
+  # storage.
+  [ -z "$driver" ] && return 0
+
   for d in $_STORAGE_DRIVERS;do
     [ "$driver" == "$d" ] && return 0
   done
@@ -1158,7 +1172,8 @@ check_storage_options(){
   fi
 }
 
-setup_storage() {
+# This is used in compatibility mode.
+setup_storage_compat() {
   local current_driver
 
   if [ "$STORAGE_DRIVER" == "" ];then
@@ -1192,7 +1207,7 @@ setup_storage() {
 
   # Set up lvm thin pool LV.
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
-    setup_lvm_thin_pool
+    setup_lvm_thin_pool_compat
   else
       write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
   fi
@@ -1342,7 +1357,8 @@ reset_storage() {
 
 usage() {
   cat <<-FOE
-    Usage: $1 [OPTIONS] INPUTFILE OUTPUTFILE
+    Usage: $1 [OPTIONS]
+    Usage: $1 [OPTIONS] COMMAND [arg...]
 
     Grows the root filesystem and sets up storage for container runtimes
 
@@ -1350,6 +1366,9 @@ usage() {
       --help    Print help message
       --reset   Reset your docker storage to init state. 
       --version Print version information.
+
+    Commands:
+      create	Create storage configuration
 FOE
 }
 
@@ -1399,6 +1418,148 @@ create_storage_config() {
 }
 
 #
+# Start of create command processing
+#
+
+setup_lvm_thin_pool () {
+  local thinpool_name=${CONTAINER_THINPOOL}
+
+  # At this point of time, a volume group should exist for lvm thin pool
+  # operations to succeed. Make that check and fail if that's not the case.
+  if ! vg_exists "$VG";then
+    Fatal "No valid volume group found. Exiting."
+  fi
+  _VG_EXISTS=1
+
+  if lvm_pool_exists $thinpool_name; then
+    Fatal "Thin pool named $thinpool_name already exists. Specify a different thin pool name."
+  fi
+
+  create_lvm_thin_pool
+  [ -n "$_STORAGE_OUT_FILE" ] &&  write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
+
+  # Enable or disable automatic pool extension
+  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
+    enable_auto_pool_extension ${VG} ${thinpool_name}
+  else
+    disable_auto_pool_extension ${VG} ${thinpool_name}
+  fi
+}
+
+setup_storage() {
+  if ! is_valid_storage_driver $STORAGE_DRIVER;then
+    Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
+  fi
+
+  # If a user decides to setup (a) and (b)/(c):
+  # a) lvm thin pool for devicemapper.
+  # b) a separate volume for container runtime root.
+  # c) a separate named ($CONTAINER_ROOT_LV_NAME) volume for $CONTAINER_ROOT_LV_MOUNT_PATH.
+  # (a) will be setup first, followed by (b) or (c).
+
+  # Set up lvm thin pool LV.
+  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+    setup_lvm_thin_pool
+  elif [ "$STORAGE_DRIVER" == "overlay" -o "$STORAGE_DRIVER" == "overlay2" ];then
+      [ -n "$_STORAGE_OUT_FILE" ] && write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
+  fi
+
+  # Set up a separate named ($CONTAINER_ROOT_LV_NAME) volume
+  # for $CONTAINER_ROOT_LV_MOUNT_PATH.
+  if ! setup_extra_lv_fs; then
+    Error "Failed to setup logical volume for $CONTAINER_ROOT_LV_MOUNT_PATH."
+    return 1
+  fi
+}
+
+run_command_create() {
+  # Verify storage options set correctly in input files
+  [ -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME already exists"
+  check_storage_options
+  determine_rootfs_pvs_vg
+  partition_disks_create_vg
+  setup_storage
+  create_storage_config "$_CONFIG_DIR/$_CONFIG_NAME" "$_STORAGE_IN_FILE"
+  set_config_status "$_CONFIG_NAME" "active"
+  echo "Created storage configuration $_CONFIG_NAME"
+}
+
+create_help() {
+  cat <<-FOE
+    Usage: $1 create [OPTIONS] CONFIG_NAME INPUTFILE
+
+    Create storage configuration specified by CONFIG_NAME and INPUTFILE
+
+    Options:
+      -h, --help	Print help message
+      -o, --output	Output file path
+FOE
+}
+
+process_command_create() {
+  local command="$1"
+  local command_opts=`echo "$command" | sed 's/create //'`
+
+  parsed_opts=`getopt -o ho: -l help,output:  -- $command_opts`
+  eval set -- "$parsed_opts"
+  while true ; do
+    case "$1" in
+        -h | --help)  create_help $(basename $0); exit 0;;
+        -o | --output)  _STORAGE_OUT_FILE=$2; shift 2;;
+        --) shift; break;;
+    esac
+  done
+
+  case $# in
+    2)
+       _CONFIG_NAME=$1
+       _STORAGE_IN_FILE=$2
+       if [ ! -e "$_STORAGE_IN_FILE" ]; then
+         Fatal "File $_STORAGE_IN_FILE does not exist."
+       fi
+      ;;
+    *)
+      create_help $(basename $0); exit 0;;
+  esac
+}
+
+#
+# End of create command processing
+#
+parse_subcommands() {
+  local subcommand_str="$1"
+  local subcommand=`echo "$subcommand_str" | cut -d " " -f1`
+
+  case $subcommand in
+    create)
+      process_command_create "$subcommand_str"
+      _COMMAND="create"
+      ;;
+    *)
+      Error "Unknown command $subcommand"
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+process_input_str() {
+  local input="$1"
+  local output
+
+  # Look for commands and if one is found substitute with -- command so
+  # that commands options are not parsed as css options by getopt
+
+  for i in $_COMMAND_LIST; do
+    if grep $i <<< "$input" > /dev/null 2>&1; then
+      echo ${input/$i/-- $i}
+      return
+    fi
+  done
+  echo "$input"
+}
+
+#
 # END of helper functions dealing with commands and storage setup for new design
 #
 
@@ -1421,7 +1582,9 @@ elif [ -e /usr/share/container-storage-setup/container-storage-setup ]; then
 fi
 
 # Main Script
-_OPTS=`getopt -o hv -l reset -l help -l version -- "$@"`
+_INPUT_STR="$@"
+_INPUT_STR_MODIFIED=`process_input_str "$_INPUT_STR"`
+_OPTS=`getopt -o hv -l reset -l help -l version -- $_INPUT_STR_MODIFIED`
 eval set -- "$_OPTS"
 _RESET=0
 while true ; do
@@ -1433,21 +1596,18 @@ while true ; do
     esac
 done
 
+# Check subcommands
 case $# in
-    0)
-	CONTAINER_THINPOOL=docker-pool
-	_DOCKER_COMPAT_MODE=1
-	_STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
-	_STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
-	;;
-    2)
-	_STORAGE_IN_FILE=$1
-	_STORAGE_OUT_FILE=$2
-	;;
-    *)
-	usage $(basename $0) >&2
-	exit 1
-	;;
+  0)
+    CONTAINER_THINPOOL=docker-pool
+    _DOCKER_COMPAT_MODE=1
+    _STORAGE_IN_FILE="/etc/sysconfig/docker-storage-setup"
+    _STORAGE_OUT_FILE="/etc/sysconfig/docker-storage"
+    ;;
+  *)
+    _SUBCOMMAND_STR="$@"
+    parse_subcommands "$_SUBCOMMAND_STR"
+    ;;
 esac
 
 if [ -n "$_DOCKER_COMPAT_MODE" ]; then
@@ -1460,4 +1620,11 @@ if [ -e "${_STORAGE_IN_FILE}" ]; then
   source ${_STORAGE_IN_FILE}
 fi
 
-run_docker_compatibility_code
+case $_COMMAND in
+  create)
+    run_command_create
+    ;;
+  *)
+    run_docker_compatibility_code
+    ;;
+esac
