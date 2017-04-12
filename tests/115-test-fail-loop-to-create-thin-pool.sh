@@ -33,8 +33,9 @@ VG=$vg_name
 CONTAINER_THINPOOL=container-thinpool
 EOF
 
+  local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
   # Run container-storage-setup
-  $CSSBIN $infile $outfile > $tmplog 2>&1
+  $create_cmd >> $tmplog 2>&1
   rc=$?
   cat $tmplog >> $LOGS 2>&1
 

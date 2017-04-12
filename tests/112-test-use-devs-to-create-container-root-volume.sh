@@ -28,11 +28,13 @@ CONTAINER_THINPOOL=container-thinpool
 EOF
 
  # Run container-storage-setup
- $CSSBIN $infile $outfile >> $LOGS 2>&1
+ local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+
+ $create_cmd >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $create_cmd failed." >> $LOGS
     cleanup_all $vg_name $root_lv_name $root_lv_mount_path "$devs" $infile $outfile
 
     return $test_status

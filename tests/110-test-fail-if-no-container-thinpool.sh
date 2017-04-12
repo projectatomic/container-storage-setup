@@ -20,7 +20,9 @@ DEVS="$devs"
 VG=$vg_name
 EOF
   # Run container-storage-setup
-  $CSSBIN $infile $outfile > $tmplog 2>&1
+  local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+
+  $create_cmd > $tmplog 2>&1
   rc=$?
   cat $tmplog >> $LOGS 2>&1
 

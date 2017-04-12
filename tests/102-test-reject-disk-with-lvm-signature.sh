@@ -28,7 +28,8 @@ EOF
   done
 
   # Run $CSSBIN
-  $CSSBIN $infile $outfile >> $LOGS 2>&1
+  local cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+  $cmd >> $LOGS 2>&1
 
   # Css should fail. If it did not, then test failed. This is very crude
   # check though as css can fail for so many reasons. A more precise check

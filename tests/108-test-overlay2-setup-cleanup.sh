@@ -11,12 +11,15 @@ test_reset_overlay2() {
 STORAGE_DRIVER=overlay2
 EOF
 
+ local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+ local remove_cmd="$CSSBIN remove $CSS_TEST_CONFIG"
+
  # Run container-storage-setup
- $CSSBIN $infile $outfile >> $LOGS 2>&1
+ $create_cmd >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $create_cmd failed." >> $LOGS
     rm -f $infile $outfile
     return 1
  fi
@@ -27,15 +30,11 @@ EOF
     return 1
  fi
 
- $CSSBIN --reset $infile $outfile >> $LOGS 2>&1
+ $remove_cmd >> $LOGS 2>&1
  if [ $? -ne 0 ]; then
     # Test failed.
     test_status=1
-    echo "ERROR: $testname: $CSSBIN --reset $infile $outfile failed." >> $LOGS
- elif [ -e $outfile ]; then
-    # Test failed.
-    test_status=1
-    echo "ERROR: $testname: $CSSBIN --reset $infile $outfile failed. $outfile still exists." >> $LOGS
+    echo "ERROR: $testname: $remove_cmd failed." >> $LOGS
  fi
 
  rm -f $infile $outfile

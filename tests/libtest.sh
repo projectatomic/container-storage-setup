@@ -121,6 +121,7 @@ cleanup() {
   udevadm settle
   rm -f $infile $outfile
   wipe_signatures "$devs"
+  [ -d "$CSS_METADATA_DIR" ] && rm -rf "$CSS_METADATA_DIR"
 }
 
 cleanup_mount_file() {

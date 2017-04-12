@@ -12,23 +12,22 @@ STORAGE_DRIVER=overlay
 EOF
 
  # Run container-storage-setup
- $CSSBIN $infile $outfile >> $LOGS 2>&1
+ local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+ local remove_cmd="$CSSBIN remove $CSS_TEST_CONFIG"
+
+ $create_cmd >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $create_cmd failed." >> $LOGS
     rm -f $infile $outfile
     return 1
  fi
 
- $CSSBIN --reset $infile $outfile >> $LOGS 2>&1
+ $remove_cmd >> $LOGS 2>&1
  if [ $? -ne 0 ]; then
     # Test failed.
-    echo "ERROR: $testname: $CSSBIN --reset failed." >> $LOGS
-    test_status=1
- elif [ -e $outfile ]; then
-    # Test failed.
-    echo "ERROR: $testname: $CSSBIN --reset $infile $outfile failed to remove $outfile." >> $LOGS
+    echo "ERROR: $testname: $remove_cmd failed." >> $LOGS
     test_status=1
  fi
 

@@ -4,6 +4,8 @@ export WORKDIR=$(pwd)/temp/
 METADATA_DIR=/var/lib/docker
 export CSSBIN="/usr/bin/container-storage-setup"
 export LOGS=$WORKDIR/logs.txt
+export CSS_TEST_CONFIG="css-test-storage-config"
+export CSS_METADATA_DIR="/var/lib/container-storage-setup"
 
 # Keeps track of overall pass/failure status of tests. Even if single test
 # fails, PASS_STATUS will be set to 1 and returned to caller when all
@@ -87,6 +89,13 @@ check_disk_signatures() {
     echo "ERROR: Found $type signature on device ${bdev} at offset ${offset}. Wipe signatures using wipefs and retry."
     exit 1
   done <<< "$sig"
+}
+
+check_css_metadata() {
+  [ ! -d "$CSS_METADATA_DIR" ] && return 0
+  [ ! "$(ls -A $CSS_METADATA_DIR)" ] && return 0
+  echo "ERROR: Dir $CSS_METADATA_DIR is not empty"
+  exit 1
 }
 
 #Tests
@@ -177,6 +186,7 @@ fi
 check_docker_active
 check_metadata
 check_config_files
+check_css_metadata
 setup_workdir
 setup_css_binary
 check_block_devs "$DEVS"

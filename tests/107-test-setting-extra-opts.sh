@@ -26,12 +26,14 @@ EXTRA_STORAGE_OPTIONS="$extra_options"
 CONTAINER_THINPOOL=container-thinpool
 EOF
 
+  local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+
   # Run container-storage-setup
-  $CSSBIN $infile $outfile >> $LOGS 2>&1
+  $create_cmd >> $LOGS 2>&1
 
   # css failed
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $CSSBIN failed." >> $LOGS
+    echo "ERROR: $testname: $create_cmd failed." >> $LOGS
     cleanup $vg_name "$devs" "$infile" "$outfile"
     return $test_status
   fi

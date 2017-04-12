@@ -1,5 +1,4 @@
 source $SRCDIR/libtest.sh
-
 # Test "container-storage-setup --reset". Returns 0 on success and 1 on failure.
 test_reset_devmapper() {
   local devs=${TEST_DEVS}
@@ -22,7 +21,9 @@ CONTAINER_THINPOOL=container-thinpool
 EOF
 
  # Run container-storage-setup
- $CSSBIN $infile $outfile >> $LOGS 2>&1
+ local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+ local remove_cmd="$CSSBIN remove $CSS_TEST_CONFIG"
+ $create_cmd >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
@@ -33,21 +34,18 @@ EOF
  
  # Make sure thinpool got created with the specified name CONTAINER_THINPOOL
  if lv_exists $vg_name "container-thinpool"; then
-     $CSSBIN --reset $infile $outfile >> $LOGS 2>&1
+     $remove_cmd >> $LOGS 2>&1
      # Test failed.
      if [ $? -eq 0 ]; then
-	 if [ -e $outfile ]; then
-	     echo "ERROR: $testname: $CSSBIN --reset $infile $outfile failed. $outfile still exists." >> $LOGS
-	 else
-	     if lv_exists $vg_name "container-thinpool"; then
-		 echo "ERROR: $testname: Thin pool container-thinpool still exists." >> $LOGS
-	     else
-		 test_status=0
-	     fi
-	 fi
+       if lv_exists $vg_name "container-thinpool"; then
+         echo "ERROR: $testname: Thin pool container-thinpool still exists." >> $LOGS
+       else
+         test_status=0
+       fi
      fi
+
      if [ $test_status -ne 0 ]; then
-	 echo "ERROR: $testname: $CSSBIN --reset $infile $outfile failed." >> $LOGS
+	 echo "ERROR: $testname: $remove_cmd failed." >> $LOGS
      fi
   else
      echo "ERROR: $testname: Thin pool container-thinpool did not get created." >> $LOGS

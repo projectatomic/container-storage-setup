@@ -22,12 +22,14 @@ VG=$vg_name
 CONTAINER_THINPOOL=container-thinpool
 EOF
 
+ local cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+
  # Run container-storage-setup
- $CSSBIN $infile $outfile >> $LOGS 2>&1
+ $cmd >> $LOGS 2>&1
 
  # Test failed.
  if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $CSSBIN $infile $outfile failed." >> $LOGS
+    echo "ERROR: $testname: $cmd failed." >> $LOGS
     cleanup $vg_name "$devs" "$infile" "$outfile"
     return $test_status
  fi
@@ -36,7 +38,7 @@ EOF
   if vg_exists "$vg_name"; then
     test_status=0
   else
-    echo "ERROR: $testname: $CSSBIN $infile $outfile failed. $vg_name was not created." >> $LOGS
+    echo "ERROR: $testname: $cmd failed. $vg_name was not created." >> $LOGS
   fi
 
   cleanup $vg_name "$devs" "$infile" "$outfile"

@@ -29,7 +29,10 @@ CONTAINER_THINPOOL=container-thinpool
 EOF
 
   # Run container-storage-setup
-  $CSSBIN $infile $outfile >> $LOGS 2>&1
+  local create_cmd="$CSSBIN create -o $outfile $CSS_TEST_CONFIG $infile"
+  local remove_cmd="$CSSBIN remove $CSS_TEST_CONFIG"
+
+  $create_cmd >> $LOGS 2>&1
 
   # Test failed.
   if [ $? -ne 0 ]; then
@@ -38,10 +41,10 @@ EOF
     return $test_status
   fi
 
-  $CSSBIN --reset $infile $outfile >> $LOGS 2>&1
+  $remove_cmd >> $LOGS 2>&1
   # Test failed.
   if [ $? -ne 0 ]; then
-    echo "ERROR: $testname: $CSSBIN --reset failed." >> $LOGS
+    echo "ERROR: $testname: $remove_cmd failed." >> $LOGS
     cleanup_all $vg_name $root_lv_name $root_lv_mount_path "$devs" $infile $outfile
     return $test_status
   fi
@@ -59,7 +62,7 @@ everything_clean(){
   local vg_name=$1
   local lv_name=$2
   local mount_filename=$3
-  if [ -e "$outfile" ] || [ -e "/etc/systemd/system/${mount_filename}" ]; then
+  if [ -e "/etc/systemd/system/${mount_filename}" ]; then
     return 1
   fi
   if lv_exists "$vg_name" "$lv_name";then
