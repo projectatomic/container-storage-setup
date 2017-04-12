@@ -55,7 +55,7 @@ _STORAGE_OUT_FILE=""
 _STORAGE_DRIVERS="devicemapper overlay overlay2"
 
 # Command related variables
-_COMMAND_LIST="create"
+_COMMAND_LIST="create activate"
 _COMMAND=""
 
 _PIPE1=/run/css-$$-fifo1
@@ -1369,6 +1369,7 @@ usage() {
 
     Commands:
       create	Create storage configuration
+      activate	Activate storage configuration
 FOE
 }
 
@@ -1417,10 +1418,199 @@ create_storage_config() {
   write_storage_config_file "$STORAGE_DRIVER" "$config_path/$_OUTFILE_NAME"
 }
 
+# activate command processing start
+
+# Wait for thin pool for certain time interval. If thinpool is found 0 is
+# returned otherwise 1.
+wait_for_thinpool() {
+  local thinpool_name=$1
+  local vg=$2
+  local timeout=$3
+
+  if lvm_pool_exists $thinpool_name $vg; then
+    return 0
+  fi
+
+  if [ -z "$timeout" ] || [ "$timeout" == "0" ];then
+    return 1
+  fi
+
+  while [ $timeout -gt 0 ]; do
+    Info "Waiting for lvm thin pool $vg/${thinpool_name}. Wait time remaining is $timeout seconds"
+    if [ $timeout -le 5 ];then
+      sleep $timeout
+    else
+      sleep 5
+    fi
+    timeout=$((timeout-5))
+    if lvm_pool_exists $thinpool_name $vg; then
+      return 0
+    fi
+  done
+
+  Info "Timed out waiting for lvm thin pool $vg/${thinpool_name}"
+  return 1
+}
+
+activate_devicemapper() {
+  local thinpool_name=$1
+  local vg=$2
+  local timeout=$3
+
+  # TODO: Add logic to activate volume group. For now it assumes that
+  # volume group will auto activate when devices are ready.
+
+  # Wait for thin pool
+  if ! wait_for_thinpool $thinpool_name $vg $timeout;then
+    return 1
+  fi
+
+  # Activate thin pool
+  if ! lvchange -ay -K $vg/$thinpool_name; then
+    Error "Thin pool $vg/$thinpool_name activation failed"
+    return 1
+  fi
+  return 0
+}
+
+activate_storage_driver() {
+  local driver=$1
+
+  if ! is_valid_storage_driver $driver; then
+    Error "Invalid storage driver $driver"
+    return 1
+  fi
+
+  [ "$driver" == "" ] && return 0
+  [ "$driver" == "overlay" -o "$driver" == "overlay2" ] && return 0
+
+  if [ "$driver" == "devicemapper" ];then
+    if ! activate_devicemapper $_M_CONTAINER_THINPOOL $_M_VG $_M_DEVICE_WAIT_TIMEOUT; then
+      Error "Activation of driver $driver failed"
+     return 1
+    fi
+  fi
+}
+
+# Wait for logical volume
+wait_for_lv() {
+  local lv_name=$1
+  local vg=$2
+  local timeout=$3
+
+  if extra_volume_exists $lv_name $vg; then
+    return 0
+  fi
+
+  if [ -z "$timeout" ] || [ "$timeout" == "0" ];then
+    return 1
+  fi
+
+  while [ $timeout -gt 0 ]; do
+    Info "Waiting for logical volume $vg/${lv_name}. Wait time remaining is $timeout seconds"
+    if [ $timeout -le 5 ];then
+      sleep $timeout
+    else
+      sleep 5
+    fi
+    timeout=$((timeout-5))
+    if extra_volume_exists $lv_name $vg; then
+      return 0
+    fi
+  done
+
+  Info "Timed out waiting for logical volume $vg/${lv_name}"
+  return 1
+}
+
+activate_extra_lv_fs() {
+  local lv_name=$1
+  local vg=$2
+  local timeout=$3
+  local mount_path=$4
+
+  if ! wait_for_lv $lv_name $vg $timeout; then
+    Error "logical volume $vg/${lv_name} does not exist"
+    return 1
+  fi
+
+  if ! lvchange -ay $vg/$lv_name; then
+      Error "Failed to activate volume $vg/$lv_name"
+      return 1
+  fi
+
+  if ! mount_extra_volume $vg $lv_name $mount_path; then
+      Error "Failed to mount volume $vg/$lv_name on $mount_path"
+      return 1
+  fi
+}
+
+# activate command processing start
+run_command_activate() {
+  local metafile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME"
+
+  [ ! -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME does not exist"
+
+  [ ! -e "$metafile_path" ] && Fatal "Storage configuration $_CONFIG_NAME metadata does not exist"
+  source "$metafile_path"
+
+  if ! activate_storage_driver $_M_STORAGE_DRIVER; then
+	  Fatal "Activation of storage config $_CONFIG_NAME failed"
+  fi
+
+  # Populate $_RESOLVED_MOUNT_DIR_PATH
+  if [ -n "$_M_CONTAINER_ROOT_LV_MOUNT_PATH" ];then
+    if ! _RESOLVED_MOUNT_DIR_PATH=$(realpath $_M_CONTAINER_ROOT_LV_MOUNT_PATH);then
+      Fatal "Failed to resolve path $_M_CONTAINER_ROOT_LV_MOUNT_PATH"
+    fi
+
+    if ! activate_extra_lv_fs $_M_CONTAINER_ROOT_LV_NAME $_M_VG $_M_DEVICE_WAIT_TIMEOUT $_RESOLVED_MOUNT_DIR_PATH; then
+      Fatal "Activation of storage config $_CONFIG_NAME failed"
+    fi
+  fi
+
+  set_config_status "$_CONFIG_NAME" "active"
+  echo "Activated storage config $_CONFIG_NAME"
+}
+
+activate_help() {
+  cat <<-FOE
+    Usage: $1 activate [OPTIONS] CONFIG_NAME
+
+    Activate storage configuration specified by CONFIG_NAME
+
+    Options:
+      -h, --help	Print help message
+FOE
+}
+
+process_command_activate() {
+  local command="$1"
+  local command_opts=`echo "$command" | sed 's/activate //'`
+
+  parsed_opts=`getopt -o h -l help -- $command_opts`
+  eval set -- "$parsed_opts"
+  while true ; do
+    case "$1" in
+        -h | --help)  activate_help $(basename $0); exit 0;;
+        --) shift; break;;
+    esac
+  done
+
+  case $# in
+    1)
+       _CONFIG_NAME=$1
+      ;;
+    *)
+      activate_help $(basename $0); exit 0;;
+  esac
+}
+# activate command processing end
+
+
 #
 # Start of create command processing
 #
-
 setup_lvm_thin_pool () {
   local thinpool_name=${CONTAINER_THINPOOL}
 
@@ -1436,6 +1626,11 @@ setup_lvm_thin_pool () {
   fi
 
   create_lvm_thin_pool
+
+  # Mark thin pool for skip auto activation during reboot. start command
+  # will activate thin pool.
+  lvchange -ky $VG/$thinpool_name
+
   [ -n "$_STORAGE_OUT_FILE" ] &&  write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
 
   # Enable or disable automatic pool extension
@@ -1535,6 +1730,10 @@ parse_subcommands() {
       process_command_create "$subcommand_str"
       _COMMAND="create"
       ;;
+    activate)
+      process_command_activate "$subcommand_str"
+      _COMMAND="activate"
+      ;;
     *)
       Error "Unknown command $subcommand"
       usage
@@ -1623,6 +1822,9 @@ fi
 case $_COMMAND in
   create)
     run_command_create
+    ;;
+  activate)
+    run_command_activate
     ;;
   *)
     run_docker_compatibility_code
