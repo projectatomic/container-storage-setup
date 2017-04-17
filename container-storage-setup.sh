@@ -910,7 +910,7 @@ enable_auto_pool_extension() {
   local profileDir
   local tmpFile=`mktemp -p /run -t tmp.XXXXX`
 
-  profileDir=$(lvm dumpconfig | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
+  profileDir=$(lvm dumpconfig --type full | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
   [ -n "$profileDir" ] || return 1
 
   if [ ! -n "$POOL_AUTOEXTEND_THRESHOLD" ];then
@@ -941,7 +941,7 @@ disable_auto_pool_extension() {
   local profileFile="${profileName}.profile"
   local profileDir
 
-  profileDir=$(lvm dumpconfig | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
+  profileDir=$(lvm dumpconfig --type full | grep "profile_dir" | cut -d "=" -f2 | sed 's/"//g')
   [ -n "$profileDir" ] || return 1
 
   lvchange --detachprofile ${volume_group}/${pool_volume}
