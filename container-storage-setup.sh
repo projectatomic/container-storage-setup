@@ -1577,14 +1577,24 @@ activate_extra_lv_fs() {
 # activate command processing start
 run_command_activate() {
   local metafile_path="$_CONFIG_DIR/$_CONFIG_NAME/$_METAFILE_NAME"
+  local status_file="$_CONFIG_DIR/$_CONFIG_NAME/$_STATUSFILE_NAME"
+  local curr_status
 
   [ ! -d "$_CONFIG_DIR/$_CONFIG_NAME" ] && Fatal "Storage configuration $_CONFIG_NAME does not exist"
 
   [ ! -e "$metafile_path" ] && Fatal "Storage configuration $_CONFIG_NAME metadata does not exist"
   source "$metafile_path"
 
+  if ! curr_status=$(cat $status_file); then
+    Fatal "Failed to determine current status of storage configuration $_CONFIG_NAME"
+  fi
+
+  if [ "$curr_status" == "invalid" ];then
+    Fatal "Storage configuration $_CONFIG_NAME is invalid. Can't activate it."
+  fi
+
   if ! activate_storage_driver $_M_STORAGE_DRIVER; then
-	  Fatal "Activation of storage config $_CONFIG_NAME failed"
+    Fatal "Activation of storage config $_CONFIG_NAME failed"
   fi
 
   # Populate $_RESOLVED_MOUNT_DIR_PATH
