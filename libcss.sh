@@ -51,3 +51,15 @@ check_data_size_syntax() {
   check_numeric_size_syntax $data_size && return 0
   return 1
 }
+
+# Check if passed in vg exists. Returns 0 if volume group exists.
+vg_exists() {
+  local vg=$1
+
+  for vg_name in $(vgs --noheadings -o vg_name); do
+    if [ "$vg_name" == "$vg" ]; then
+      return 0
+    fi
+  done
+  return 1
+}

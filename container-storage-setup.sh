@@ -656,18 +656,6 @@ is_dev_part_of_vg() {
  return 1
 }
 
-# Check if passed in vg exists. Returns 0 if volume group exists.
-vg_exists() {
-  local check_vg=$1
-
-  for vg_name in $(vgs --noheadings -o vg_name); do
-    if [ "$vg_name" == "$VG" ]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
 is_block_dev_partition() {
   local bdev=$1 devparent
 
