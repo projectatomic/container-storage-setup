@@ -63,3 +63,9 @@ vg_exists() {
   done
   return 1
 }
+
+# Remove volume group if it exists
+remove_vg_if_exists() {
+  vg_exists $1 || return 0
+  vgremove "$1" > /dev/null
+}
