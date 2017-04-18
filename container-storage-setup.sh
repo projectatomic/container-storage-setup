@@ -876,6 +876,38 @@ create_disk_partitions() {
   done
 }
 
+remove_partition() {
+  local dev="$1"
+
+  if [ -x "/usr/sbin/parted" ]; then
+    parted "$dev" rm 1 >/dev/null
+  else
+    sfdisk --delete "$dev" 1 >/dev/null
+  fi
+}
+
+# Remove disk pvs and partitions. This is called in reset storage path.
+# If partition or pv does not exist, it will still return success. Error
+# will be returned only if pv or partition exists and removal fails.
+remove_disk_pvs_parts() {
+  local devs="$1" part
+
+  for dev in $devs; do
+    part=$(dev_query_first_child $dev)
+    [ -z "$part" ] && continue
+
+    if ! remove_pv_if_exists $part; then
+      Error "Failed to remove physical volume label on device $part"
+      return 1
+    fi
+
+    if ! remove_partition $dev; then
+      Error "Failed to remove partition on device $dev"
+      return 1
+    fi
+  done
+}
+
 create_extend_volume_group() {
   if [ -z "$_VG_EXISTS" ]; then
     vgcreate $VG $_PVS
@@ -1790,7 +1822,7 @@ reset_extra_volume() {
 
 # Remove command processing
 reset_storage() {
-  local resolved_path
+  local resolved_path dev
 
   # Populate $_RESOLVED_MOUNT_DIR_PATH
   if [ -n "$_M_CONTAINER_ROOT_LV_MOUNT_PATH" ];then
@@ -1808,6 +1840,19 @@ reset_storage() {
   if [ "$_M_STORAGE_DRIVER" == "devicemapper" ]; then
     if ! reset_lvm_thin_pool $_M_CONTAINER_THINPOOL $_M_VG; then
       Error "Failed to remove thinpool $_M_VG/$_M_CONTAINER_THINPOOL"
+      return 1
+    fi
+  fi
+
+  # If we created a volume group, remove volume group.
+  if [ "$_M_VG_CREATED" == "1" ];then
+    if ! remove_vg_if_exists "$_M_VG"; then
+      Error "Failed to remove volume group $_M_VG"
+      return 1
+    fi
+
+    # Cleanup any disks we added to volume group.
+    if ! remove_disk_pvs_parts "$_M_DEVS_RESOLVED";then
       return 1
     fi
   fi
