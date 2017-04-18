@@ -69,3 +69,12 @@ remove_vg_if_exists() {
   vg_exists $1 || return 0
   vgremove "$1" > /dev/null
 }
+
+pv_exists() {
+  pvs $1 >/dev/null 2>&1
+}
+
+remove_pv_if_exists() {
+  pv_exists $1 || return 0
+  pvremove $1 >/dev/null
+}
