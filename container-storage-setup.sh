@@ -821,8 +821,7 @@ create_partition_sfdisk(){
   size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
     cat <<EOF | sfdisk $dev
 unit: sectors
-
-start=     2048, size=  ${size}, Id=8e
+2048,${size},8e
 EOF
 }
 
