@@ -4,17 +4,18 @@ branches:
   - try
 
 host:
-  distro: fedora/25/atomic
+  distro: fedora/26/atomic
   specs:
     secondary-disk: 10
 
-context: fedora/25/atomic
+context: fedora/26/atomic
 
 required: true
 
 tests:
   - systemctl stop docker
-  - rm -rf /var/lib/docker
+  # just empty the dir, don't delete it (on F26, /var/lib/docker is an lv mount)
+  - rm -rf /var/lib/docker/*
   - ostree admin unlock
   - make install
   - rm -f /etc/sysconfig/docker-storage-setup
