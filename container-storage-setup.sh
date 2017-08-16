@@ -377,13 +377,17 @@ create_lvm_thin_pool () {
 
   check_min_data_size_condition
 
+  if [ -n "$POOL_META_SIZE" ]; then
+    _META_SIZE_ARG="$POOL_META_SIZE"
+  else
   # Calculate size of metadata lv. Reserve 0.1% of the free space in the VG
   # for docker metadata.
   _VG_SIZE=$(vgs --noheadings --nosuffix --units s -o vg_size $VG)
   _META_SIZE=$(( $_VG_SIZE / 1000 + 1 ))
-
   if [ -z "$_META_SIZE" ];then
     Fatal "Failed to calculate metadata volume size."
+  fi
+  _META_SIZE_ARG=${_META_SIZE}s
   fi
 
   if [ -n "$CHUNK_SIZE" ]; then
@@ -396,7 +400,7 @@ create_lvm_thin_pool () {
     _DATA_SIZE_ARG="-L $DATA_SIZE"
   fi
 
-  lvcreate -y --type thin-pool --zero n $_CHUNK_SIZE_ARG --poolmetadatasize ${_META_SIZE}s $_DATA_SIZE_ARG -n $CONTAINER_THINPOOL $VG
+  lvcreate -y --type thin-pool --zero n $_CHUNK_SIZE_ARG --poolmetadatasize $_META_SIZE_ARG $_DATA_SIZE_ARG -n $CONTAINER_THINPOOL $VG
 }
 
 get_configured_thin_pool() {
