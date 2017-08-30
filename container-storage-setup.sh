@@ -1068,7 +1068,7 @@ mount_extra_volume() {
   remove_systemd_mount_target $mount_dir
   mounts=$(extra_lv_mountpoint $vg $lv_name $mount_dir)
   if [ -z "$mounts" ]; then
-      mount /dev/$vg/$lv_name $mount_dir
+      mount -o pquota /dev/$vg/$lv_name $mount_dir
   fi
 }
 
@@ -1145,7 +1145,7 @@ Before=docker-storage-setup.service
 What=/dev/$vg/$lv_name
 Where=${mount_dir}
 Type=xfs
-Options=defaults
+Options=pquota
 
 [Install]
 WantedBy=docker-storage-setup.service
