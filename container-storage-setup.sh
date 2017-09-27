@@ -639,8 +639,18 @@ grow_root_pvs() {
 
 grow_root_lv_fs() {
   if [ -n "$ROOT_SIZE" ]; then
+
+    # Allow user to pass in an argument that could be provided
+    # to -L (like 10G or +5G) or an argument that could be passed
+    # to -l (like 80%FREE). Switch based on if '%' is in string.
+    if [[ $ROOT_SIZE =~ % ]]; then
+        SIZE_ARG="-l $ROOT_SIZE"
+    else
+        SIZE_ARG="-L $ROOT_SIZE"
+    fi
+
     # TODO: Error checking if specified size is <= current size
-    lvextend -r -L $ROOT_SIZE $_ROOT_DEV || true
+    lvextend -r $SIZE_ARG $_ROOT_DEV || true
   fi
 }
 
