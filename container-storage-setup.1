@@ -211,6 +211,12 @@ Options below should be specified as values acceptable to \f[B]lvextend -L\f[].
 
 ROOT_SIZE: The size to which the root filesystem should be grown.
 
+	ROOT_SIZE can take values acceptable to \f[B]lvcreate -L\f[] as well as
+	some values acceptable to \f[B]lvcreate -l\f[]. If user intends to pass
+	values acceptable to \f[B]lvcreate -l\f[], then only those values which
+	contains "%" in syntax are acceptable.  If value does not contain
+	"%" it is assumed value is suitable for \f[B]lvcreate -L\f[].
+
 DATA_SIZE: The desired size for container runtime thin pool data LV.
 	Defaults: 40% free space in the VG after the root LV and container
 	runtime metadata LV have been allocated/grown.
