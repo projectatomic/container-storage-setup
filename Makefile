@@ -19,7 +19,7 @@ install-docker:
 	install -D -m 644 docker-storage-setup.service ${UNITDIR}/${DOCKER}-storage-setup.service
 	if [ ! -f ${SYSCONFDIR}/${DOCKER}-storage-setup ]; then \
 		install -D -m 644 docker-storage-setup-override.conf ${SYSCONFDIR}/${DOCKER}-storage-setup; \
-		echo "CONTAINER_THINPOOL=docker-pool" >> ${SYSCONFDIR}/${DOCKER}-storage-setup; \
+		echo "STORAGE_DRIVER=overlay2" >> ${SYSCONFDIR}/${DOCKER}-storage-setup; \
 	fi
 	install -d -m 755 ${BINDIR}
 	(cd ${BINDIR}; ln -sf /usr/bin/container-storage-setup ${DOCKER}-storage-setup)
