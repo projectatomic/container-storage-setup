@@ -272,6 +272,22 @@ can_mount_overlay() {
   return 0
 }
 
+is_xfs_ftype_enabled() {
+  local mountroot=$1
+  local fstype
+
+  fstype=$(stat -f -c '%T' $mountroot)
+
+  [ "$fstype" != "xfs" ] && return 0
+
+  # For xfs, see https://bugzilla.redhat.com/show_bug.cgi?id=1288162#c8
+  if test "$(xfs_info $mountroot | grep -o 'ftype=[01]')" = "ftype=0"; then
+	  return 1
+  fi
+
+  return 0
+}
+
 write_storage_config_file () {
   local storage_driver=$1
   local storage_out_file=$2
@@ -1329,6 +1345,7 @@ check_storage_options(){
 # This is used in compatibility mode.
 setup_storage_compat() {
   local current_driver
+  local containerroot
 
   if [ "$STORAGE_DRIVER" == "" ];then
     Info "STORAGE_DRIVER not set, no storage will be configured. You must specify STORAGE_DRIVER if you want to configure storage."
@@ -1369,7 +1386,7 @@ setup_storage_compat() {
   if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     setup_lvm_thin_pool_compat
   else
-      write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
+    write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
   fi
 
   # If container root is on a separate volume, setup that.
@@ -1383,6 +1400,18 @@ setup_storage_compat() {
   if ! setup_extra_lv_fs_compat; then
     Error "Failed to setup logical volume for $CONTAINER_ROOT_LV_MOUNT_PATH."
     return 1
+  fi
+
+  if [ "$STORAGE_DRIVER" == "overlay" -o "$STORAGE_DRIVER" == "overlay2" ]; then
+    # This is little hacky. We are guessing where overlay2 will be setup
+    # by container runtime environment. At some point of time this should
+    # be passed in by a config variable.
+    containerroot=${_RESOLVED_MOUNT_DIR_PATH:-/var}
+
+    if ! is_xfs_ftype_enabled "$containerroot"; then
+       Error "XFS filesystem at ${containerroot} has ftype=0, cannot use overlay backend; consider different driver or separate volume or OS reprovision"
+       return 1
+    fi
   fi
 }
 
@@ -2336,6 +2365,8 @@ setup_lvm_thin_pool () {
 }
 
 setup_storage() {
+  local containerroot
+
   if ! is_valid_storage_driver $STORAGE_DRIVER;then
     Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
   fi
@@ -2364,6 +2395,18 @@ setup_storage() {
   if ! setup_extra_lv_fs; then
     Error "Failed to setup logical volume for $CONTAINER_ROOT_LV_MOUNT_PATH."
     return 1
+  fi
+
+  if [ "$STORAGE_DRIVER" == "overlay" -o "$STORAGE_DRIVER" == "overlay2" ]; then
+    # This is little hacky. We are guessing where overlay2 will be setup
+    # by container runtime environment. At some point of time this should
+    # be passed in by a config variable.
+    containerroot=${_RESOLVED_MOUNT_DIR_PATH:-/var}
+
+    if ! is_xfs_ftype_enabled "$containerroot"; then
+       Error "XFS filesystem at ${containerroot} has ftype=0, cannot use overlay backend; consider different driver or separate volume or OS reprovision"
+       return 1
+    fi
   fi
 }
 
