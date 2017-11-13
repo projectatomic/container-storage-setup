@@ -240,6 +240,38 @@ get_config_options() {
   return 0
 }
 
+# Check if multiple overlay directories are supported and if overlay module
+# itself is supported on the system.
+can_mount_overlay() {
+  local dir="/run/container-storage-setup/"
+  local lower1="$dir/lower1"
+  local lower2="$dir/lower2"
+  local upper="$dir/upper"
+  local work="$dir/work"
+  local merged="$dir/merged"
+  local cmd
+
+  # Create multiple directories in /run
+  if ! mkdir -p $dir; then
+    Error "Failed to create directory $dir"
+    return 1
+  fi
+
+  cmd="mkdir -p $lower1 $lower2 $upper $work $merged"
+  if ! $cmd; then
+    Error "Failed to run $cmd"
+    return 1
+  fi
+
+  cmd="unshare -m mount -t overlay -o lowerdir=$lower1:$lower2,upperdir=$upper,workdir=$work none $merged"
+  if ! $cmd; then
+    Error "Failed to run $cmd"
+    return 1
+  fi
+
+  return 0
+}
+
 write_storage_config_file () {
   local storage_driver=$1
   local storage_out_file=$2
@@ -1321,6 +1353,12 @@ setup_storage_compat() {
    Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove ${_STORAGE_OUT_FILE} and retry."
   fi
 
+  if [ "$STORAGE_DRIVER" == "overlay" -o "$STORAGE_DRIVER" == "overlay2" ]; then
+    if ! can_mount_overlay; then
+      Fatal "Can not setup storage driver $STORAGE_DRIVER as system does not support it. Specify a different driver."
+    fi
+  fi
+
   # If a user decides to setup (a) and (b)/(c):
   # a) lvm thin pool for devicemapper.
   # b) a separate volume for container runtime root.
@@ -2300,6 +2338,12 @@ setup_lvm_thin_pool () {
 setup_storage() {
   if ! is_valid_storage_driver $STORAGE_DRIVER;then
     Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
+  fi
+
+  if [ "$STORAGE_DRIVER" == "overlay" -o "$STORAGE_DRIVER" == "overlay2" ]; then
+    if ! can_mount_overlay; then
+      Fatal "Can not setup storage driver $STORAGE_DRIVER as system does not support it. Specify a different driver."
+    fi
   fi
 
   # If a user decides to setup (a) and (b)/(c):
