@@ -1367,7 +1367,8 @@ setup_storage_compat() {
 
   # If storage is configured and new driver should match old one.
   if [ -n "$current_driver" ] && [ "$current_driver" != "$STORAGE_DRIVER" ];then
-   Fatal "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove ${_STORAGE_OUT_FILE} and retry."
+   Info "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove ${_STORAGE_OUT_FILE} and retry."
+   return 0
   fi
 
   if [ "$STORAGE_DRIVER" == "overlay" -o "$STORAGE_DRIVER" == "overlay2" ]; then
