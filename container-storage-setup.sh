@@ -893,16 +893,25 @@ determine_partition_type() {
 }
 
 create_partition_sfdisk(){
-  local dev="$1" size
+  local dev="$1" part_type="$2" size part_label
   # Use a single partition of a whole device
   # TODO:
   #   * Consider gpt, or unpartitioned volumes
   #   * Error handling when partition(s) already exist
   #   * Deal with loop/nbd device names. See growpart code
-  size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
+  if [ "$part_type" == "gpt" ];then
+    # Linux LVM GUID for GPT. Taken from Wiki.
+    part_label="E6D6D379-F507-44C2-A23C-238F2A3DF928"
+    # Create as big a partition as possible.
+    size=""
+  else
+    part_label="8e"
+    size=$(( $( awk "\$4 ~ /"$( basename $dev )"/ { print \$3 }" /proc/partitions ) * 2 - 2048 ))
+  fi
     cat <<EOF | sfdisk $dev
 unit: sectors
-2048,${size},8e
+label: $part_type
+2048,${size},$part_label
 EOF
 }
 
@@ -925,7 +934,7 @@ create_partition() {
   if [ -x "/usr/sbin/parted" ]; then
     create_partition_parted $dev "$part_type"
   else
-    create_partition_sfdisk $dev
+    create_partition_sfdisk $dev "$part_type"
   fi
 
   # Sometimes on slow storage it takes a while for partition device to
