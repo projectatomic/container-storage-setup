@@ -38,6 +38,9 @@ _LOCKFILE="lock"
 _CONFIG_NAME=""
 _CONFIG_DIR="/var/lib/container-storage-setup/"
 
+# Partition type related
+_MAX_MBR_SIZE_BYTES="2199023255040"
+
 # Metadata related stuff
 _METADATA_VERSION=1
 _INFILE_NAME="infile"
@@ -874,6 +877,21 @@ scan_disks() {
   echo $new_disks
 }
 
+determine_partition_type() {
+  local dev="$1" size_bytes part_type
+
+  if ! size_bytes=$(blockdev --getsize64 "$dev"); then
+    Fatal "Failed to determine size of disk $dev"
+  fi
+
+  if [ $size_bytes -gt $_MAX_MBR_SIZE_BYTES ];then
+    part_type="gpt"
+  else
+    part_type="dos"
+  fi
+  echo $part_type
+}
+
 create_partition_sfdisk(){
   local dev="$1" size
   # Use a single partition of a whole device
@@ -890,14 +908,22 @@ EOF
 
 create_partition_parted(){
   local dev="$1"
-  parted $dev --script mklabel msdos mkpart primary 0% 100% set 1 lvm on
+  local part_type="$2"
+
+  if [ "$part_type" == "gpt" ];then
+    parted $dev --script mklabel gpt mkpart "container-partition" 0% 100% set 1 lvm on
+  else
+    parted $dev --script mklabel msdos mkpart primary 0% 100% set 1 lvm on
+  fi
 }
 
 create_partition() {
-  local dev="$1" part
+  local dev="$1" part part_type
+
+  part_type=`determine_partition_type "$dev"`
 
   if [ -x "/usr/sbin/parted" ]; then
-    create_partition_parted $dev
+    create_partition_parted $dev "$part_type"
   else
     create_partition_sfdisk $dev
   fi
