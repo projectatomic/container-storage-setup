@@ -47,7 +47,9 @@ EOF
   fi
 
   # Make sure partition table type is gpt.
-  part_type=`fdisk -l "${lbdevice}" | grep "Disklabel type" | cut -d " " -f3`
+  part_type=`fdisk -l "${lbdevice}" | grep "label type" | cut -d ":" -f2`
+  # Get rid of blanks
+  part_type=${part_type/ /}
 
   if [ "$part_type" == "gpt" ]; then
     test_status=0
