@@ -958,13 +958,27 @@ create_disk_partitions() {
   local devs="$1" part
 
   for dev in $devs; do
+    # wipefs /dev/disk does not wipe any lvm signatures which might be
+    # present on /dev/diskpart1. This signature will become visible to
+    # lvm udev rules and will kickstart volume creation as soon as partion
+    # is created and race with further partition commands like wipefs,
+    # pvcreate etc. So zero out first few MB of disk in an attempt to
+    # wipe any lvm signatures on first partition.
+    #
+    # By now we have ownership of disk and we have checked there are no
+    # signatures on disk or signatures have been wiped. Dont care about
+    # any signatures now on in the middle of disk.
+    Info "Writing zeros to first 4MB of device $dev"
+    if ! dd if=/dev/zero of=$dev bs=1M count=4; then
+      Fatal "Failed to zero first 4MB of device $bdev"
+    fi
+
     create_partition $dev
     part=$(dev_query_first_child $dev)
 
-    # By now we have ownership of disk and we have checked there are no
-    # signatures on disk or signatures should be wiped. Don't care
-    # about any signatures found in the middle of disk after creating
-    # partition and wipe signatures if any are found.
+    # It now seems unnecessary to do wipefs on partition given we already
+    # zeroed out first 4MB. Only time it will be required if partition
+    # starts beyong 4MB. Keep it for now.
     if ! wipefs -f -a ${part}; then
       Fatal "Failed to wipe signatures on device ${part}"
     fi
