@@ -778,6 +778,10 @@ is_block_dev_partition() {
     return 0
   fi
 
+  if [ "$disktype" == "mpath" ];then
+    return 1
+  fi
+
   # For loop device partitions, lsblk reports type as "loop" and not "part".
   # So check if device has a parent in the tree and if it does, there are high
   # chances it is partition (except the case of lvm volumes)
