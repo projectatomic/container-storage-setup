@@ -179,6 +179,16 @@ extra_options_has_dm_fs() {
   return 1
 }
 
+# Given a dm device name in /dev/mapper/ dir
+# (ex. /dev/mapper/docker-vg--docker-pool), get associated volume group
+get_dmdev_vg() {
+  local dmdev=${1##"/dev/mapper/"}
+  local vg
+
+  vg=`dmsetup splitname $dmdev --noheadings | cut -d ":" -f1`
+  echo $vg
+}
+
 # Wait for a device for certain time interval. If device is found 0 is
 # returned otherwise 1.
 wait_for_dev() {
@@ -1619,6 +1629,10 @@ partition_disks_create_vg() {
 
 # This is used in compatibility mode.
 reset_storage_compat() {
+  local tpool
+
+  # Check if a thin pool is already configured in /etc/sysconfig/docker-storage
+  tpool=`get_configured_thin_pool`
   if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
     reset_extra_volume_compat $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH $VG
   fi
@@ -1630,9 +1644,18 @@ reset_storage_compat() {
     reset_extra_volume_compat $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR $VG
   fi
 
-  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+  if [ -n "$tpool" ]; then
+    local tpool_vg tpool_lv
+    Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
+    if ! is_managed_tpool_compat "$tpool"; then
+      Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
+    fi
+    tpool_vg=`get_dmdev_vg $tpool`
+    reset_lvm_thin_pool ${CONTAINER_THINPOOL} "$tpool_vg"
+  elif [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     reset_lvm_thin_pool ${CONTAINER_THINPOOL} $VG
   fi
+
   rm -f ${_STORAGE_OUT_FILE}
 }
 
