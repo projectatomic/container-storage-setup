@@ -614,12 +614,7 @@ setup_lvm_thin_pool_compat () {
     fi
   fi
 
-  # Enable or disable automatic pool extension
-  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
-    enable_auto_pool_extension ${VG} ${thinpool_name}
-  else
-    disable_auto_pool_extension ${VG} ${thinpool_name}
-  fi
+  process_auto_pool_extenion ${VG} ${thinpool_name}
 }
 
 lvm_pool_exists() {
@@ -1079,6 +1074,16 @@ disable_auto_pool_extension() {
   rm -f ${profileDir}/${profileFile}
 }
 
+process_auto_pool_extenion() {
+  local vg=$1 thinpool_name=$2
+
+  # Enable or disable automatic pool extension
+  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
+    enable_auto_pool_extension ${vg} ${thinpool_name}
+  else
+    disable_auto_pool_extension ${vg} ${thinpool_name}
+  fi
+}
 
 # Gets the current ${_STORAGE_OPTIONS}= string.
 get_current_storage_options() {
@@ -2406,12 +2411,7 @@ setup_lvm_thin_pool () {
 
   [ -n "$_STORAGE_OUT_FILE" ] &&  write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
 
-  # Enable or disable automatic pool extension
-  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
-    enable_auto_pool_extension ${VG} ${thinpool_name}
-  else
-    disable_auto_pool_extension ${VG} ${thinpool_name}
-  fi
+  process_auto_pool_extenion ${VG} ${thinpool_name}
 }
 
 setup_storage() {
