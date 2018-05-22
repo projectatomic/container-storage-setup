@@ -179,6 +179,16 @@ extra_options_has_dm_fs() {
   return 1
 }
 
+# Given a dm device name in /dev/mapper/ dir
+# (ex. /dev/mapper/docker-vg--docker-pool), get associated volume group
+get_dmdev_vg() {
+  local dmdev=${1##"/dev/mapper/"}
+  local vg
+
+  vg=`dmsetup splitname $dmdev --noheadings | cut -d ":" -f1`
+  echo $vg
+}
+
 # Wait for a device for certain time interval. If device is found 0 is
 # returned otherwise 1.
 wait_for_dev() {
@@ -495,6 +505,11 @@ run_docker_compatibility_code() {
   # Verify storage options set correctly in input files
   check_storage_options
 
+  # Query and save current storage options
+  if ! _CURRENT_STORAGE_OPTIONS=$(get_current_storage_options); then
+    return 1
+  fi
+
   determine_rootfs_pvs_vg
 
   if [ $_RESET -eq 1 ]; then
@@ -570,27 +585,62 @@ reset_lvm_thin_pool () {
   fi
 }
 
+# Used in compatibility mode. Determine if already configured thin pool
+# is managed by container-storage-setup or not. Returns 0 if tpool is
+# managed otherwise 1.
+is_managed_tpool_compat() {
+  local tpool=$1
+  local thinpool_name=${CONTAINER_THINPOOL}
+  local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
+
+  # css generated thin pool device name starts with /dev/mapper/ and
+  # ends with $thinpool_name
+  [[ "$tpool" == /dev/mapper/*${escaped_pool_lv_name} ]] && return 0
+  return 1
+}
+
 # This is used in comatibility mode.
-setup_lvm_thin_pool_compat () {
+bringup_existing_thin_pool_compat() {
+  local tpool=$1
+
+   # css generated thin pool device name starts with /dev/mapper/ and
+   # ends with $thinpool_name
+   if ! is_managed_tpool_compat "$tpool";then
+     Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
+   fi
+
+  if ! wait_for_dev "$tpool"; then
+    Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${_STORAGE_OUT_FILE} and retry"
+  fi
+}
+
+# This is used in comatibility mode. Returns 0 if thin pool is already
+# configured and wait could find the device. Returns 1 if thin pool is
+# not configured and probably needs to be created. Terminates script
+# on fatal errors.
+check_existing_thinpool_compat() {
   local tpool
-  # Check if a thin pool is already configured in /etc/sysconfig/docker-storage.
+
+  # Check if a thin pool is already configured in /etc/sysconfig/docker-storage
   # If yes, wait for that thin pool to come up.
   tpool=`get_configured_thin_pool`
+  [ -z "$tpool" ] && return 1
+
+  Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
+  bringup_existing_thin_pool_compat "$tpool"
+  return
+}
+
+# This is used in comatibility mode.
+setup_lvm_thin_pool_compat () {
   local thinpool_name=${CONTAINER_THINPOOL}
 
-  if [ -n "$tpool" ]; then
-     local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
-     Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
-
-     # css generated thin pool device name starts with /dev/mapper/ and
-     # ends with $thinpool_name
-     if [[ "$tpool" != /dev/mapper/*${escaped_pool_lv_name} ]];then
-       Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
-     fi
-
-     if ! wait_for_dev "$tpool"; then
-       Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${_STORAGE_OUT_FILE} and retry"
-     fi
+  if check_existing_thinpool_compat; then
+    process_auto_pool_extenion ${VG} ${thinpool_name}
+    # We found existing thin pool and waited for it and processed auto
+    # pool extension changes. There should not be any need to process
+    # further
+    return
   fi
 
   # At this point of time, a volume group should exist for lvm thin pool
@@ -614,12 +664,7 @@ setup_lvm_thin_pool_compat () {
     fi
   fi
 
-  # Enable or disable automatic pool extension
-  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
-    enable_auto_pool_extension ${VG} ${thinpool_name}
-  else
-    disable_auto_pool_extension ${VG} ${thinpool_name}
-  fi
+  process_auto_pool_extenion ${VG} ${thinpool_name}
 }
 
 lvm_pool_exists() {
@@ -1079,6 +1124,16 @@ disable_auto_pool_extension() {
   rm -f ${profileDir}/${profileFile}
 }
 
+process_auto_pool_extenion() {
+  local vg=$1 thinpool_name=$2
+
+  # Enable or disable automatic pool extension
+  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
+    enable_auto_pool_extension ${vg} ${thinpool_name}
+  else
+    disable_auto_pool_extension ${vg} ${thinpool_name}
+  fi
+}
 
 # Gets the current ${_STORAGE_OPTIONS}= string.
 get_current_storage_options() {
@@ -1405,11 +1460,6 @@ setup_storage_compat() {
     Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
   fi
 
-  # Query and save current storage options
-  if ! _CURRENT_STORAGE_OPTIONS=$(get_current_storage_options); then
-    return 1
-  fi
-
   if ! current_driver=$(get_existing_storage_driver);then
     Fatal "Failed to determine existing storage driver."
   fi
@@ -1417,6 +1467,7 @@ setup_storage_compat() {
   # If storage is configured and new driver should match old one.
   if [ -n "$current_driver" ] && [ "$current_driver" != "$STORAGE_DRIVER" ];then
    Info "Storage is already configured with ${current_driver} driver. Can't configure it with ${STORAGE_DRIVER} driver. To override, remove ${_STORAGE_OUT_FILE} and retry."
+   check_existing_thinpool_compat || true
    return 0
   fi
 
@@ -1578,6 +1629,10 @@ partition_disks_create_vg() {
 
 # This is used in compatibility mode.
 reset_storage_compat() {
+  local tpool
+
+  # Check if a thin pool is already configured in /etc/sysconfig/docker-storage
+  tpool=`get_configured_thin_pool`
   if [ -n "$_RESOLVED_MOUNT_DIR_PATH" ] && [ -n "$CONTAINER_ROOT_LV_NAME" ];then
     reset_extra_volume_compat $CONTAINER_ROOT_LV_NAME $_RESOLVED_MOUNT_DIR_PATH $VG
   fi
@@ -1589,9 +1644,18 @@ reset_storage_compat() {
     reset_extra_volume_compat $_DOCKER_ROOT_LV_NAME $_DOCKER_ROOT_DIR $VG
   fi
 
-  if [ "$STORAGE_DRIVER" == "devicemapper" ]; then
+  if [ -n "$tpool" ]; then
+    local tpool_vg tpool_lv
+    Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
+    if ! is_managed_tpool_compat "$tpool"; then
+      Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
+    fi
+    tpool_vg=`get_dmdev_vg $tpool`
+    reset_lvm_thin_pool ${CONTAINER_THINPOOL} "$tpool_vg"
+  elif [ "$STORAGE_DRIVER" == "devicemapper" ]; then
     reset_lvm_thin_pool ${CONTAINER_THINPOOL} $VG
   fi
+
   rm -f ${_STORAGE_OUT_FILE}
 }
 
@@ -2406,12 +2470,7 @@ setup_lvm_thin_pool () {
 
   [ -n "$_STORAGE_OUT_FILE" ] &&  write_storage_config_file $STORAGE_DRIVER "$_STORAGE_OUT_FILE"
 
-  # Enable or disable automatic pool extension
-  if [ "$AUTO_EXTEND_POOL" == "yes" ];then
-    enable_auto_pool_extension ${VG} ${thinpool_name}
-  else
-    disable_auto_pool_extension ${VG} ${thinpool_name}
-  fi
+  process_auto_pool_extenion ${VG} ${thinpool_name}
 }
 
 setup_storage() {
