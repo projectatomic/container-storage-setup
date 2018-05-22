@@ -591,6 +591,12 @@ setup_lvm_thin_pool_compat () {
      if ! wait_for_dev "$tpool"; then
        Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${_STORAGE_OUT_FILE} and retry"
      fi
+
+     process_auto_pool_extenion ${VG} ${thinpool_name}
+     # We found existing thin pool and waited for it and processed auto
+     # pool extension changes. There should not be any need to process
+     # further
+     return
   fi
 
   # At this point of time, a volume group should exist for lvm thin pool
