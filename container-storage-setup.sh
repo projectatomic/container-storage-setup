@@ -495,6 +495,11 @@ run_docker_compatibility_code() {
   # Verify storage options set correctly in input files
   check_storage_options
 
+  # Query and save current storage options
+  if ! _CURRENT_STORAGE_OPTIONS=$(get_current_storage_options); then
+    return 1
+  fi
+
   determine_rootfs_pvs_vg
 
   if [ $_RESET -eq 1 ]; then
@@ -1443,11 +1448,6 @@ setup_storage_compat() {
 
   if ! is_valid_storage_driver $STORAGE_DRIVER;then
     Fatal "Invalid storage driver: ${STORAGE_DRIVER}."
-  fi
-
-  # Query and save current storage options
-  if ! _CURRENT_STORAGE_OPTIONS=$(get_current_storage_options); then
-    return 1
   fi
 
   if ! current_driver=$(get_existing_storage_driver);then
