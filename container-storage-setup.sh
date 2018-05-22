@@ -570,6 +570,20 @@ reset_lvm_thin_pool () {
   fi
 }
 
+# Used in compatibility mode. Determine if already configured thin pool
+# is managed by container-storage-setup or not. Returns 0 if tpool is
+# managed otherwise 1.
+is_managed_tpool_compat() {
+  local tpool=$1
+  local thinpool_name=${CONTAINER_THINPOOL}
+  local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
+
+  # css generated thin pool device name starts with /dev/mapper/ and
+  # ends with $thinpool_name
+  [[ "$tpool" == /dev/mapper/*${escaped_pool_lv_name} ]] && return 0
+  return 1
+}
+
 # This is used in comatibility mode.
 setup_lvm_thin_pool_compat () {
   local tpool
@@ -579,12 +593,10 @@ setup_lvm_thin_pool_compat () {
   local thinpool_name=${CONTAINER_THINPOOL}
 
   if [ -n "$tpool" ]; then
-     local escaped_pool_lv_name=`echo $thinpool_name | sed 's/-/--/g'`
      Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
-
      # css generated thin pool device name starts with /dev/mapper/ and
      # ends with $thinpool_name
-     if [[ "$tpool" != /dev/mapper/*${escaped_pool_lv_name} ]];then
+     if ! is_managed_tpool_compat "$tpool";then
        Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
      fi
 
