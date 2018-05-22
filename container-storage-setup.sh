@@ -585,30 +585,47 @@ is_managed_tpool_compat() {
 }
 
 # This is used in comatibility mode.
-setup_lvm_thin_pool_compat () {
+bringup_existing_thin_pool_compat() {
+  local tpool=$1
+
+   # css generated thin pool device name starts with /dev/mapper/ and
+   # ends with $thinpool_name
+   if ! is_managed_tpool_compat "$tpool";then
+     Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
+   fi
+
+  if ! wait_for_dev "$tpool"; then
+    Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${_STORAGE_OUT_FILE} and retry"
+  fi
+}
+
+# This is used in comatibility mode. Returns 0 if thin pool is already
+# configured and wait could find the device. Returns 1 if thin pool is
+# not configured and probably needs to be created. Terminates script
+# on fatal errors.
+check_existing_thinpool_compat() {
   local tpool
-  # Check if a thin pool is already configured in /etc/sysconfig/docker-storage.
+
+  # Check if a thin pool is already configured in /etc/sysconfig/docker-storage
   # If yes, wait for that thin pool to come up.
   tpool=`get_configured_thin_pool`
+  [ -z "$tpool" ] && return 1
+
+  Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
+  bringup_existing_thin_pool_compat "$tpool"
+  return
+}
+
+# This is used in comatibility mode.
+setup_lvm_thin_pool_compat () {
   local thinpool_name=${CONTAINER_THINPOOL}
 
-  if [ -n "$tpool" ]; then
-     Info "Found an already configured thin pool $tpool in ${_STORAGE_OUT_FILE}"
-     # css generated thin pool device name starts with /dev/mapper/ and
-     # ends with $thinpool_name
-     if ! is_managed_tpool_compat "$tpool";then
-       Fatal "Thin pool ${tpool} does not seem to be managed by container-storage-setup. Exiting."
-     fi
-
-     if ! wait_for_dev "$tpool"; then
-       Fatal "Already configured thin pool $tpool is not available. If thin pool exists and is taking longer to activate, set DEVICE_WAIT_TIMEOUT to a higher value and retry. If thin pool does not exist any more, remove ${_STORAGE_OUT_FILE} and retry"
-     fi
-
-     process_auto_pool_extenion ${VG} ${thinpool_name}
-     # We found existing thin pool and waited for it and processed auto
-     # pool extension changes. There should not be any need to process
-     # further
-     return
+  if check_existing_thinpool_compat; then
+    process_auto_pool_extenion ${VG} ${thinpool_name}
+    # We found existing thin pool and waited for it and processed auto
+    # pool extension changes. There should not be any need to process
+    # further
+    return
   fi
 
   # At this point of time, a volume group should exist for lvm thin pool
