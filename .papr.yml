@@ -13,11 +13,13 @@ context: fedora/28/atomic
 required: true
 
 tests:
+  - mkdir -p /srv/install
+  - docker run --rm --privileged -v $PWD:/code -v /srv/install:/srv/install --workdir /code registry.fedoraproject.org/fedora:28 sh -c 'dnf install -y make && make install DESTDIR=/srv/install'
   - systemctl stop docker
-  # just empty the dir, don't delete it (on F26, /var/lib/docker is an lv mount)
   - rm -rf /var/lib/docker/*
   - ostree admin unlock
-  - make install
+  - rsync -rlv /srv/install/usr/ /usr/
+  - rsync -rlv /srv/install/etc/ /etc/
   - rm -f /etc/sysconfig/docker-storage-setup
   - rm -f /etc/sysconfig/docker-storage
   - if findmnt /dev/vdb; then umount /dev/vdb; fi
