@@ -23,7 +23,7 @@ set -e
 
 # container-storage-setup version information
 _CSS_MAJOR_VERSION="0"
-_CSS_MINOR_VERSION="10"
+_CSS_MINOR_VERSION="11"
 _CSS_SUBLEVEL="0"
 _CSS_EXTRA_VERSION=""
 
