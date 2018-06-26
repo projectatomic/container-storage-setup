@@ -727,8 +727,20 @@ grow_root_pvs() {
   # partitions on all disks, so as long as they match, growing the LV should
   # also work.
   for pv in $_ROOT_PVS; do
-    # Split device & partition.  Ick.
-    growpart $( echo $pv | sed -r 's/([^0-9]*)([0-9]+)/\1 \2/' ) || true
+    if ! test -b $pv; then
+        Error "Not a block device: $pv"
+    fi
+    local major_hex minor_hex major_minor
+    local devpath partition parent_path parent_device
+    major_hex=$(stat -c '%t' $pv)
+    minor_hex=$(stat -c '%T' $pv)
+    major_minor=$((0x${major_hex})):$((0x${minor_hex}))
+    devpath=$(realpath /sys/dev/block/$major_minor)
+    partition=$(cat $devpath/partition)
+    parent_path=$(dirname $devpath)
+    parent_device=/dev/$(basename ${parent_path})
+    # TODO: Remove the || true here
+    growpart ${parent_device} ${partition} || true
     pvresize $pv
   done
 }
